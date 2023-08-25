@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portfolio-builder"
+version = "1.0.0"
+requires-python = ">=3.7"
+dependencies = [
+    "Flask>=2.2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7,<8",
+    "mypy>=0.961,<1",
+]
+
+[tool.setuptools.package-data]
+"*" = ["**/static/**/*", "**/templates/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+ignore_missing_imports = true
+files = "portfolio-builder,tests"
