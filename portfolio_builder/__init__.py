@@ -1,8 +1,13 @@
 import logging.config
 
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 from portfolio_builder import views
+from portfolio_builder.default_settings import Config
+
+
+db = SQLAlchemy()
 
 
 def configure_logging():
@@ -29,8 +34,10 @@ def configure_logging():
 def create_app(config_overrides=None):
     configure_logging()  # should be configured before any access to app.logger
     app = Flask(__name__)
-    app.config.from_object("portfolio_builder.default_settings")
+    app.config.from_object(Config)
     app.config.from_prefixed_env()
+
+    db.init_app(app)
 
     if config_overrides is not None:
         app.config.from_mapping(config_overrides)
