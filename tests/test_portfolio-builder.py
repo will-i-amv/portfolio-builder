@@ -1,6 +1,6 @@
 import pytest
 
-from portfolio-builder import create_app
+from portfolio_builder import create_app
 
 
 @pytest.fixture

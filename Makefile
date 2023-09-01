@@ -9,7 +9,7 @@ venv:
 		venv/bin/pip install --editable ".[dev]"
 
 run: venv
-	venv/bin/flask --app portfolio-builder --debug run
+	venv/bin/flask --app portfolio_builder --debug run
 
 mypy: venv
 	venv/bin/mypy
