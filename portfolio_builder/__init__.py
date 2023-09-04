@@ -4,8 +4,8 @@ from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 
-from portfolio_builder import views
 from portfolio_builder.default_settings import Config
+from portfolio_builder.public.views import bp as main_bp
 
 
 db = SQLAlchemy()
@@ -45,6 +45,6 @@ def create_app(config_overrides=None):
     if config_overrides is not None:
         app.config.from_mapping(config_overrides)
 
-    app.register_blueprint(views.bp)
+    app.register_blueprint(main_bp)
 
     return app
