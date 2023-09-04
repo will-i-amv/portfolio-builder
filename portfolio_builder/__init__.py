@@ -2,14 +2,16 @@ import logging.config
 
 from flask import Flask
 from flask_bootstrap import Bootstrap
+from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
 from portfolio_builder.default_settings import Config
-from portfolio_builder.public.views import bp as main_bp
 
 
 db = SQLAlchemy()
 bootstrap = Bootstrap()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
 
 
 def configure_logging():
@@ -41,10 +43,14 @@ def create_app(config_overrides=None):
 
     db.init_app(app)
     bootstrap.init_app(app)
-    
+    login_manager.init_app(app)
+
     if config_overrides is not None:
         app.config.from_mapping(config_overrides)
 
+    from portfolio_builder.public.views import bp as main_bp
+    from portfolio_builder.auth.views import bp as auth_bp
     app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
 
     return app
