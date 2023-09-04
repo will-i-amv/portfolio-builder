@@ -1,6 +1,7 @@
 import logging.config
 
 from flask import Flask
+from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 
 from portfolio_builder import views
@@ -8,6 +9,7 @@ from portfolio_builder.default_settings import Config
 
 
 db = SQLAlchemy()
+bootstrap = Bootstrap()
 
 
 def configure_logging():
@@ -38,7 +40,8 @@ def create_app(config_overrides=None):
     app.config.from_prefixed_env()
 
     db.init_app(app)
-
+    bootstrap.init_app(app)
+    
     if config_overrides is not None:
         app.config.from_mapping(config_overrides)
 

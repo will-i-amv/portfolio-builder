@@ -3,7 +3,7 @@ from flask import current_app as app
 from flask import render_template
 
 
-bp = Blueprint("root", __name__)
+bp = Blueprint("main", __name__)
 
 
 @bp.route("/")
