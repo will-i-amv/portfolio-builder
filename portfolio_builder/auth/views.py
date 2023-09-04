@@ -17,7 +17,6 @@ def register():
         return render_template("auth/register.html", title="Register", form=form)
     else:
         new_user = User(
-            email=form.email.data,
             username=form.username.data,
             password=generate_password_hash(form.password.data)
         )
