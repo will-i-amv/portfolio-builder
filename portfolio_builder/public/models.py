@@ -61,11 +61,6 @@ class WatchlistItem(db.Model):
     trade_date = db.Column(db.DateTime, default=get_default_date)
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     comments = db.Column(db.String(140))
-    user_id = db.Column(
-        db.Integer,
-        db.ForeignKey("users.id", on_delete="CASCADE"),
-        nullable=False
-    )
     watchlist_id = db.Column(
         db.Integer,
         db.ForeignKey("watchlists.id", on_delete="CASCADE"),
