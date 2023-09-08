@@ -31,6 +31,23 @@ class Security(db.Model):
         )
 
 
+class Watchlist(db.Model):
+    __tablename__ = "watchlists"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(25), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", on_delete="CASCADE"), 
+        nullable=False
+    )
+    items = db.relationship(
+        "WatchlistItem",
+        backref="watchlists", 
+        passive_deletes=True
+    )
+
+    def __repr__(self):
+        return (f"<Watchlist ID: {self.id}, Watchlist Name: {self.name}>")
 
 
 class WatchlistItem(db.Model):
@@ -57,22 +74,3 @@ class WatchlistItem(db.Model):
 
     def __repr__(self):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
-
-
-class Watchlist(db.Model):
-    __tablename__ = "watchlists"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(25), nullable=False)
-    user_id = db.Column(
-        db.Integer,
-        db.ForeignKey("users.id", on_delete="CASCADE"), 
-        nullable=False
-    )
-    items = db.relationship(
-        "WatchlistItem",
-        backref="watchlists", 
-        passive_deletes=True
-    )
-
-    def __repr__(self):
-        return (f"<Watchlist ID: {self.id}, Watchlist Name: {self.name}>")
