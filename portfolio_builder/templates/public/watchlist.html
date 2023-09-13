@@ -1,0 +1,19 @@
+{% extends 'base_layout.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+    Watchlist
+{% endblock %}
+
+{% block page_content %}
+    <div class="page-header">
+        <h1>Watchlists</h1>
+    </div>
+    {% if not watchlists %}
+        <p>
+            You do not have any active watchlists. Create a watchlist <a href="">here</a>
+        </p>
+    {% else %}
+        <div class="col-md-4">{{ wtf.quick_form(form) }}</div>
+    {% endif %}
+{% endblock %}
