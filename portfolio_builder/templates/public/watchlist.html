@@ -2,18 +2,28 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 
 {% block title %}
-    Watchlist
+    Watchlists
 {% endblock %}
 
 {% block page_content %}
     <div class="page-header">
         <h1>Watchlists</h1>
     </div>
-    {% if not watchlists %}
-        <p>
-            You do not have any active watchlists. Create a watchlist <a href="">here</a>
-        </p>
-    {% else %}
-        <div class="col-md-4">{{ wtf.quick_form(form) }}</div>
-    {% endif %}
+    <div>
+        {% if not watchlists %}
+            <p>You do not have any active watchlists. Create a watchlist below</p>
+        {% else %}
+            <p>Select a Watchlist</p>
+            <div class="col-md-4">{{ wtf.quick_form(watchlist_select_form) }}</div>
+        {% endif %}
+    </div>
+    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#hiddenForm" 
+            aria-expanded="false" aria-controls="hiddenForm">Add Watchlist</button>
+    <div class="collapse" id="hiddenForm">
+        <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
+            {{ watchlist_add_form.hidden_tag() }}
+            {{ watchlist_add_form.name.label }} {{ watchlist_add_form.name() }}
+            {{ watchlist_add_form.submit() }}
+        </form>
+    </div>
 {% endblock %}
