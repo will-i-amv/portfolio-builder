@@ -10,7 +10,7 @@
         <h1>Watchlists</h1>
     </div>
     <div>
-        {% if not watchlists %}
+        {% if not watchlist_select_form.watchlist.choices %}
             <p>You do not have any active watchlists. Create a watchlist below</p>
         {% else %}
             <p>Select a Watchlist</p>
