@@ -1,14 +1,25 @@
-{% extends "base_layout.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
+<link rel="stylesheet" href="{{ url_for('static', filename = 'styles/auth-styles.css') }}" />
+{% extends 'base_layout.html' %}
+{% from '_utils.html' import render_field %}
 
+{% block header %}
+    <h1>
+        {% block title %}
+        {% endblock %}
+    </h1>
+{% endblock %}
 
-{% block title %}Register{% endblock %}
-
-{% block page_content %}
-<div class="page-header">
-    <h1>Register</h1>
-</div>
-<div class="col-md-4">
-    {{ wtf.quick_form(form) }}
-</div>
+{% block content %}
+    <br />
+    <div class="main-wrapper-form">
+        <h1 class="Form-title">Register</h1>
+        <form method="post" class="auth-form">
+            <dl>{{ render_field(form.username) }}
+                {{ render_field(form.password) }}
+                {{ render_field(form.confirm) }}</dl>
+            <br />
+            <p>{{ form.submit() }}</p>
+            {{ form.csrf_token }}
+        </form>
+    </div>
 {% endblock %}
