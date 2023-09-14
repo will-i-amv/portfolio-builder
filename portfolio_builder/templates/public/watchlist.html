@@ -10,20 +10,67 @@
         <h1>Watchlists</h1>
     </div>
     <div>
-        {% if not watchlist_select_form.watchlist.choices %}
+        {% if not select_form.watchlist.choices %}
             <p>You do not have any active watchlists. Create a watchlist below</p>
         {% else %}
             <p>Select a Watchlist</p>
-            <div class="col-md-4">{{ wtf.quick_form(watchlist_select_form) }}</div>
+            <div class="col-md-4">{{ wtf.quick_form(select_form) }}</div>
         {% endif %}
     </div>
     <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#hiddenForm" 
             aria-expanded="false" aria-controls="hiddenForm">Add Watchlist</button>
     <div class="collapse" id="hiddenForm">
         <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
-            {{ watchlist_add_form.hidden_tag() }}
-            {{ watchlist_add_form.name.label }} {{ watchlist_add_form.name() }}
-            {{ watchlist_add_form.submit() }}
+            {{ add_watchlist_form.hidden_tag() }}
+            {{ add_watchlist_form.name.label }} {{ add_watchlist_form.name() }}
+            {{ add_watchlist_form.submit() }}
+        </form>
+    </div>
+    <div>
+        {% if not watchlist_items %}
+            <p>You do not have any watchlist items. Add a watchlist item below</p>
+        {% else %}
+            <p>Watchlist items</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Sector</th>
+                        <th>Trade Date</th>
+                        <th>Created Timestamp</th>
+                        <th>comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in watchlist_items %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.ticker }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.price }}</td>
+                            <td>{{ item.sector }}</td>
+                            <td>{{ item.trade_date.strftime('%d-%m-%Y') }}</td>
+                            <td>{{ item.comments }}</td>
+                            </td>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#AddItemForm" 
+            aria-expanded="false" aria-controls="AddItemForm">Add Watchlist Item</button>
+    <div class="collapse" id="AddItemForm">
+        <form action="{{ url_for('watchlist.add_watchlist_item') }}" method="post">
+            {{ add_item_form.hidden_tag() }}
+            {{ add_item_form.watchlist.label }} {{ add_item_form.watchlist() }}
+            {{ add_item_form.ticker.label }} {{ add_item_form.ticker() }}
+            {{ add_item_form.quantity.label }} {{ add_item_form.quantity() }}
+            {{ add_item_form.price.label }} {{ add_item_form.price() }}
+            {{ add_item_form.sector.label }} {{ add_item_form.sector() }}
+            {{ add_item_form.comments.label }} {{ add_item_form.comments() }}
+            {{ add_item_form.submit() }}
         </form>
     </div>
 {% endblock %}

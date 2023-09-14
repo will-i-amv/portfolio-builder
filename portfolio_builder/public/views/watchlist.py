@@ -1,10 +1,13 @@
 from flask_login import current_user
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import login_required
+from sqlalchemy.orm import aliased
 
 from portfolio_builder import db
-from portfolio_builder.public.forms import WatchlistAddForm, WatchlistSelectForm
-from portfolio_builder.public.models import Watchlist
+from portfolio_builder.public.forms import (
+    WatchlistAddForm, WatchlistSelectForm, WatchlistAddItemForm
+)
+from portfolio_builder.public.models import Watchlist, WatchlistItem
 
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
@@ -22,15 +25,48 @@ def index():
         .order_by(Watchlist.id)
         .all()
     )
-    watchlist_select_form = WatchlistSelectForm()
-    watchlist_select_form.watchlist.choices =  [
+    select_form = WatchlistSelectForm()
+    select_form.watchlist.choices =  [
         (item[0], item[0])
         for item in watchlists
     ]
+    add_item_form = WatchlistAddItemForm()
+    add_item_form.watchlist.choices =  [
+        (item[0], item[0])
+        for item in watchlists
+    ]
+    if select_form.validate_on_submit():
+        watchlist_name = select_form.watchlist.data
+    else:
+        watchlist_name = next(iter(watchlists), '')
+    watch_itm = aliased(WatchlistItem)
+    watch = aliased(Watchlist)
+    watchlist_items = (
+        db
+        .session
+        .query(watch_itm)
+        .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
+        .filter(
+            watch.user_id == current_user.id,
+            watch.name == watchlist_name,
+        )
+        .with_entities(
+            watch_itm.ticker,
+            watch_itm.quantity,
+            watch_itm.price,
+            watch_itm.sector,
+            watch_itm.trade_date,
+            watch_itm.created_timestamp,
+            watch_itm.comments,
+        )
+        .all()
+    )
     return render_template(
         "public/watchlist.html", 
-        watchlist_select_form=watchlist_select_form,
-        watchlist_add_form=WatchlistAddForm(),
+        select_form=select_form,
+        add_watchlist_form=WatchlistAddForm(),
+        add_item_form=add_item_form,
+        watchlist_items=watchlist_items,
     )
 
 
@@ -52,4 +88,10 @@ def add_watchlist():
         for error_name, error_desc in watchlist_form.errors.items():
             error_name = error_name.title()
             flash(f'{error_name}: {error_desc[0]}')
+    return redirect(url_for('watchlist.index'))
+
+
+@bp.route('/add_item', methods=['POST'])
+@login_required
+def add_watchlist_item():
     return redirect(url_for('watchlist.index'))
