@@ -1,56 +1,60 @@
-{% extends "bootstrap/base.html" %}
+<!DOCTYPE html>
 
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css?family=Ubuntu&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'base_style.css') }}" />
+    <title>Prescient Finance</title>
+</head>
+<title>
+    {% block title %}
+        Prescient
+    {% endblock %}
+</title>
 
-{% block title %}Stock Portfolio Builder{% endblock %}
-
-{% block head %}
-{{ super() }}
-<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-{% endblock %}
-
-{% block navbar %}
-<div class="navbar navbar-inverse" role="navigation">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="{{ url_for('main.index') }}">Stock Portfolio Builder</a>
+<body>
+    <nav>
+        <div class="breaks">
+            <div class="bk1"></div>
+            <div class="bk2"></div>
+            <div class="bk3"></div>
         </div>
-        <div class="navbar-collapse collapse">
-            <ul class="nav navbar-nav">
-                <li><a href="{{ url_for('main.index') }}">Home</a></li>
-                <li><a href="">About</a></li>
-            </ul>
-            <ul class="nav navbar-nav navbar-right">
-                {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('auth.logout') }}">Log Out</a></li>
-                {% else %}
-                <li><a href="{{ url_for('auth.register') }}">Register</a></li>
-                <li><a href="{{ url_for('auth.login') }}">Log In</a></li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block content %}
-<div class="container">
+        <ul class="nav-icons">
+            {% if current_user.is_authenticated %}
+                <li>
+                    <span class="username">{{ current_user.username }}</span>
+                </li>
+            {% endif %}
+            <li>
+                <a href="{{ url_for('watchlist.index') }}">WATCHLIST</a>
+            </li>
+            {% if current_user.is_authenticated %}
+                <li>
+                    <a href="{{ url_for('auth.logout') }}">Log Out</a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{{ url_for('auth.register') }}">Register</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('auth.login') }}">Log In</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    <script src="{{ url_for('static', filename = 'javascript/navbarscript.js') }}"></script>
+</body>
+<section class="main-content">
+    <header>
+        {% block header %}
+        {% endblock %}
+    </header>
     {% for message in get_flashed_messages() %}
-    <div class="alert alert-warning">
-        <button type="button" class="close" data-dismiss="alert">&times;</button>
-        {{ message }}
-    </div>
+        <div class="flash">{{ message }}</div>
     {% endfor %}
-    {% block page_content %}{% endblock %}
-</div>
-{% endblock %}
 
-{% block scripts %}
-{{ super() }}
-{% endblock %}
+    {% block content %}
+    {% endblock %}
+</section>

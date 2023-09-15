@@ -13,6 +13,11 @@ class User(UserMixin, db.Model):
         nullable=False
     )
     password = db.Column(db.String(257), nullable=False)
+    watchlists = db.relationship(
+        'Watchlist', 
+        backref='users',
+        passive_deletes=True
+    )
 
     def __repr__(self):
         return (f"<Username: {self.username}>")

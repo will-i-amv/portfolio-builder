@@ -41,7 +41,7 @@ def login():
             return redirect(url_for("auth.login"))
         else:
             login_user(user, remember=form.remember_me.data)
-            return redirect(url_for("main.index"))
+            return redirect(url_for("watchlist.index"))
 
 
 @bp.route('/logout')
