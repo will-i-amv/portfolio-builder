@@ -98,6 +98,12 @@ def add_watchlist():
     return redirect(url_for('watchlist.index'))
 
 
+@bp.route('/delete', methods=('POST',))
+@login_required
+def delete_watchlist():
+    return redirect(url_for('watchlist.index'))
+
+
 @bp.route('/add_item', methods=['POST'])
 @login_required
 def add_watchlist_item():
