@@ -37,7 +37,7 @@ class Watchlist(db.Model):
     name = db.Column(db.String(25), nullable=False)
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey("users.id", on_delete="CASCADE"), 
+        db.ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=False
     )
     items = db.relationship(
@@ -63,7 +63,7 @@ class WatchlistItem(db.Model):
     comments = db.Column(db.String(140))
     watchlist_id = db.Column(
         db.Integer,
-        db.ForeignKey("watchlists.id", on_delete="CASCADE"),
+        db.ForeignKey("watchlists.id", ondelete="CASCADE"),
         nullable=False
     )
 
