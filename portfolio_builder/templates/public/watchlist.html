@@ -7,24 +7,41 @@
 {% from '_utils.html' import render_field %}
 
 {% block header %}
-    {% if watchlist_name %}
+    {% if not watchlist_name %}
+        <div class="Welcome2">
+            <h1 class="main-heading2">
+                You do not have any active watchlists. 
+                Create a watchlist <a data-toggle="modal" data-target="#mymodal5">here</a>
+            </h1>
+        </div>
+    {% else %}
         <h1 class="main-heading">
             {% block title %}
                 Entries for <span class="watchlist-name-title">{{ watchlist_name }}</span>
             {% endblock %}
         </h1>
-    {% else %}
-        <div class="Welcome2">
-            <h1 class="main-heading2">You do not have any active watchlists.</h1>
-            <li class="create-watchlist">
-                <a data-toggle="modal" data-target="#mymodal5">Create a watchlist here</a>
-            </li>
-        </div>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-    {% if watchlist_name %}
+    {% if not watchlist_name %}
+        <div id="mymodal5" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Create Watchlist</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
+                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
+                            <p>{{ add_watchlist_form.submit() }}</p>
+                            {{ add_watchlist_form.csrf_token }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
         <form class="group-selection" action="{{ url_for('watchlist.index') }}" method="post">
             <span class="selection-label">
                 <dl>{{ render_field(select_form.watchlist) }}</dl>
@@ -157,22 +174,5 @@
             </tbody>
         </table>
         <script src="{{ url_for('static', filename = 'javascript/watchlist-filter.js') }}"></script>
-    {% else %}
-        <div id="mymodal5" class="modal fade" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">Create Watchlist</h4>
-                    </div>
-                    <div class="modal-body">
-                        <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
-                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
-                            <p>{{ add_watchlist_form.submit() }}</p>
-                            {{ add_watchlist_form.csrf_token }}
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
     {% endif %}
 {% endblock %}
