@@ -53,6 +53,24 @@ def get_watchlist_items(name):
     return watchlist_items
 
 
+def get_watchlist_item(id, watch_name):
+    watch_itm = aliased(WatchlistItem)
+    watch = aliased(Watchlist)
+    item = (
+        db
+        .session
+        .query(watch_itm)
+        .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
+        .filter(
+            watch.user_id == current_user.id,
+            watch.name == watch_name,
+            watch_itm.id==id,
+        )
+        .first()
+    )
+    return item
+
+
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
@@ -122,8 +140,9 @@ def delete_watchlist():
             )
             .first()
         )
-        db.session.delete(watchlist)
-        db.session.commit()
+        if watchlist:
+            db.session.delete(watchlist)
+            db.session.commit()
         return redirect(url_for('watchlist.index'))
 
 
@@ -161,7 +180,6 @@ def add():
         db.session.add(new_item)
         db.session.commit()
         flash(f"{ticker} has been added to your watchlist")
-        return redirect(url_for("watchlist.index"))
     elif form.errors:
         for error_name, error_desc in form.errors.items():
             error_name = error_name.title()
@@ -169,7 +187,7 @@ def add():
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<str:watch_name>/<int:id>/update', methods=['POST'])
+@bp.route('/<watch_name>/<int:id>/update', methods=['POST'])
 @login_required
 def update(id, watch_name):
     watchlists = get_watchlist_names()
@@ -179,20 +197,7 @@ def update(id, watch_name):
         for item in watchlists
     ]
     if add_item_form.validate_on_submit():
-        watch_itm = aliased(WatchlistItem)
-        watch = aliased(Watchlist)
-        item = (
-            db
-            .session
-            .query(watch_itm)
-            .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
-            .filter(
-                watch.user_id == current_user.id,
-                watch.name == watch_name,
-                watch_itm.id==id,
-            )
-            .first()
-        )
+        item = get_watchlist_item(id, watch_name)
         if item:
             item.ticker = add_item_form.ticker.data
             item.watchlist = add_item_form.watchlist.data
@@ -211,23 +216,10 @@ def update(id, watch_name):
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<str:watch_name>/<int:id>/delete', methods=['POST'])
+@bp.route('/<watch_name>/<int:id>/delete', methods=['POST'])
 @login_required
 def delete(id, watch_name):
-    watch_itm = aliased(WatchlistItem)
-    watch = aliased(Watchlist)
-    item = (
-        db
-        .session
-        .query(watch_itm)
-        .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
-        .filter(
-            watch.user_id == current_user.id,
-            watch.name == watch_name,
-            watch_itm.id==id,
-        )
-        .first()
-    )
+    item = get_watchlist_item(id, watch_name)
     if item:
         db.session.delete(item)
         db.session.commit()
