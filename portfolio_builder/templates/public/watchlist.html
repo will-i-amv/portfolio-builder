@@ -7,21 +7,21 @@
 {% from '_utils.html' import render_field %}
 
 {% block header %}
-    {% if not watchlist_name %}
+    {% if not curr_watch_name %}
         <div class="Welcome2">
             <h1 class="main-heading2">You do not have any active watchlists. Create a watchlist <a data-toggle="modal" data-target="#mymodal5">here</a></h1>
         </div>
     {% else %}
         <h1 class="main-heading">
             {% block title %}
-                Entries for watchlist <span class="watchlist-name-title">{{ watchlist_name }}</span>
+                Entries for watchlist <span class="watchlist-name-title">{{ curr_watch_name }}</span>
             {% endblock %}
         </h1>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-    {% if not watchlist_name %}
+    {% if not curr_watch_name %}
         <div id="mymodal5" class="modal fade" role="dialog">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -99,7 +99,7 @@
                         <form class="group-removal" action="{{ url_for('watchlist.delete_watchlist') }}" method="post">
                             <span class="selection-label">Select a Watchlist</span>
                             <select class="watchlist-selector" name="watchlist_group_removed">
-                                {% for name in watchlists %}
+                                {% for name in watch_names %}
                                     <option value="{{ name }}">{{ name }}</option>
                                 {% endfor %}
                             </select>
@@ -124,7 +124,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in watchlist_items %}
+                {% for item in watch_items %}
                     <tr class="watchlist-rows">
                         <td class="c1">{{ item.id }}</td>
                         <td class="c2">{{ item.ticker }}</td>
@@ -142,7 +142,7 @@
                                             <h4 class="modal-title">Edit</h4>
                                         </div>
                                         <div class="modal-body">
-                                            <form action="{{ url_for('watchlist.update_item', id = item.id, watchlist_name = watchlist_name) }}" method="post">
+                                            <form action="{{ url_for('watchlist.update_item', id = item.id, watch_name = curr_watch_name) }}" method="post">
                                                 <dl>{{ render_field(add_item_form.watchlist) }}
                                                     {{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
                                                     {{ render_field(add_item_form.quantity, value = item.quantity) }}
@@ -157,7 +157,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <form action="{{ url_for('watchlist.delete_item', id = item.id, watchlist_name = watchlist_name) }}" method="post">
+                            <form action="{{ url_for('watchlist.delete_item', id = item.id, watch_name = curr_watch_name) }}" method="post">
                                 <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete Order ID {{ item.id }}?');" />
                             </form>
                         </td>

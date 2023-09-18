@@ -55,30 +55,31 @@ def get_watchlist_items(name):
 @bp.route("/", methods=('GET', 'POST'))
 @login_required
 def index():
-    watchlists = get_watchlist_names()
+    watch_names = get_watchlist_names()
     select_form = WatchlistSelectForm()
+    add_watchlist_form = WatchlistAddForm()
+    add_item_form = WatchlistAddItemForm()
     select_form.watchlist.choices =  [
         (item, item)
-        for item in watchlists
+        for item in watch_names
     ]
-    add_item_form = WatchlistAddItemForm()
     add_item_form.watchlist.choices =  [
         (item, item)
-        for item in watchlists
+        for item in watch_names
     ]
     if select_form.validate_on_submit():
-        watchlist_name = select_form.watchlist.data
+        curr_watch_name = select_form.watchlist.data # Current watchlist name
     else:
-        watchlist_name = next(iter(watchlists), '')
-    watchlist_items = get_watchlist_items(watchlist_name)
+        curr_watch_name = next(iter(watch_names), '')
+    watch_items = get_watchlist_items(curr_watch_name)
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,
-        add_watchlist_form=WatchlistAddForm(),
+        add_watchlist_form=add_watchlist_form,
         add_item_form=add_item_form,
-        watchlist_name=watchlist_name,
-        watchlists=watchlists,
-        watchlist_items=watchlist_items,
+        curr_watch_name=curr_watch_name,
+        watch_names=watch_names,
+        watch_items=watch_items,
     )
 
 
@@ -167,9 +168,9 @@ def add_item():
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<int:id>/<watchlist_name>/update_item', methods=['POST'])
+@bp.route('/<int:id>/<watch_name>/update_item', methods=['POST'])
 @login_required
-def update_item(id, watchlist_name):
+def update_item(id, watch_name):
     watchlists = get_watchlist_names()
     add_item_form = WatchlistAddItemForm()
     add_item_form.watchlist.choices =  [
@@ -186,7 +187,7 @@ def update_item(id, watchlist_name):
             .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
             .filter(
                 watch.user_id == current_user.id,
-                watch.name == watchlist_name,
+                watch.name == watch_name,
                 watch_itm.id==id,
             )
             .first()
@@ -209,9 +210,9 @@ def update_item(id, watchlist_name):
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<int:id>/<watchlist_name>/delete_item', methods=['POST'])
+@bp.route('/<int:id>/<watch_name>/delete_item', methods=['POST'])
 @login_required
-def delete_item(id, watchlist_name):
+def delete_item(id, watch_name):
     watch_itm = aliased(WatchlistItem)
     watch = aliased(Watchlist)
     item = (
@@ -221,7 +222,7 @@ def delete_item(id, watchlist_name):
         .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
         .filter(
             watch.user_id == current_user.id,
-            watch.name == watchlist_name,
+            watch.name == watch_name,
             watch_itm.id==id,
         )
         .first()
