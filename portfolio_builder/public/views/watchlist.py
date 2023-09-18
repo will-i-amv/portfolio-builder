@@ -56,6 +56,7 @@ def index():
             watch.name == watchlist_name,
         )
         .with_entities(
+            watch_itm.id,
             watch_itm.ticker,
             watch_itm.quantity,
             watch_itm.price,
@@ -121,7 +122,7 @@ def delete_watchlist():
 
 @bp.route('/add_item', methods=['POST'])
 @login_required
-def add_watchlist_item():
+def add_item():
     watchlists = get_watchlist_names()
     form = WatchlistAddItemForm()
     form.watchlist.choices = [
@@ -155,4 +156,17 @@ def add_watchlist_item():
         for error_name, error_desc in form.errors.items():
             error_name = error_name.title()
             flash(f"{error_name}: {error_desc[0]}")
+    return redirect(url_for("watchlist.index"))
+
+
+@bp.route('/<int:id>/<ticker>/update_item', methods=['POST'])
+@login_required
+def update_item(id, ticker):
+    return redirect(url_for("watchlist.index"))
+
+
+
+@bp.route('/<int:id>/delete_item', methods=['POST'])
+@login_required
+def delete_item(id):
     return redirect(url_for("watchlist.index"))
