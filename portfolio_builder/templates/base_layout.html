@@ -6,11 +6,11 @@
     <link href="https://fonts.googleapis.com/css?family=Ubuntu&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename = 'base_style.css') }}" />
-    <title>Prescient Finance</title>
+    <title>Stock Portfolio Builder</title>
 </head>
 <title>
     {% block title %}
-        Prescient
+        Stock Portfolio Builder
     {% endblock %}
 </title>
 
@@ -24,7 +24,7 @@
         <ul class="nav-icons">
             {% if current_user.is_authenticated %}
                 <li>
-                    <span class="username">{{ current_user.username }}</span>
+                    <span class="username">USER: {{ current_user.username | upper }}</span>
                 </li>
             {% endif %}
             <li>
@@ -32,14 +32,14 @@
             </li>
             {% if current_user.is_authenticated %}
                 <li>
-                    <a href="{{ url_for('auth.logout') }}">Log Out</a>
+                    <a href="{{ url_for('auth.logout') }}">LOG OUT</a>
                 </li>
             {% else %}
                 <li>
-                    <a href="{{ url_for('auth.register') }}">Register</a>
+                    <a href="{{ url_for('auth.register') }}">REGISTER</a>
                 </li>
                 <li>
-                    <a href="{{ url_for('auth.login') }}">Log In</a>
+                    <a href="{{ url_for('auth.login') }}">LOG IN</a>
                 </li>
             {% endif %}
         </ul>
