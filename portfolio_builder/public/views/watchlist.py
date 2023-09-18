@@ -25,6 +25,7 @@ def get_watchlist_names():
     )
     return [item[0] for item in watchlists]
 
+
 def get_watchlist_items(name):
     watch_itm = aliased(WatchlistItem)
     watch = aliased(Watchlist)
@@ -52,7 +53,7 @@ def get_watchlist_items(name):
     return watchlist_items
 
 
-@bp.route("/", methods=('GET', 'POST'))
+@bp.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
     watch_names = get_watchlist_names()
@@ -83,7 +84,7 @@ def index():
     )
 
 
-@bp.route('/add', methods=['POST'])
+@bp.route('/add_watchlist', methods=['POST'])
 @login_required
 def add_watchlist():
     watchlist_form = WatchlistAddForm()
@@ -104,7 +105,7 @@ def add_watchlist():
     return redirect(url_for('watchlist.index'))
 
 
-@bp.route('/delete', methods=('POST',))
+@bp.route('/delete_watchlist', methods=['POST'])
 @login_required
 def delete_watchlist():
     if not request.method == "POST":
@@ -126,9 +127,9 @@ def delete_watchlist():
         return redirect(url_for('watchlist.index'))
 
 
-@bp.route('/add_item', methods=['POST'])
+@bp.route('/add', methods=['POST'])
 @login_required
-def add_item():
+def add():
     watchlists = get_watchlist_names()
     form = WatchlistAddItemForm()
     form.watchlist.choices = [
@@ -168,9 +169,9 @@ def add_item():
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<int:id>/<watch_name>/update_item', methods=['POST'])
+@bp.route('/<str:watch_name>/<int:id>/update', methods=['POST'])
 @login_required
-def update_item(id, watch_name):
+def update(id, watch_name):
     watchlists = get_watchlist_names()
     add_item_form = WatchlistAddItemForm()
     add_item_form.watchlist.choices =  [
@@ -210,9 +211,9 @@ def update_item(id, watch_name):
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<int:id>/<watch_name>/delete_item', methods=['POST'])
+@bp.route('/<str:watch_name>/<int:id>/delete', methods=['POST'])
 @login_required
-def delete_item(id, watch_name):
+def delete(id, watch_name):
     watch_itm = aliased(WatchlistItem)
     watch = aliased(Watchlist)
     item = (

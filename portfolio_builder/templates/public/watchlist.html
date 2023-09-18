@@ -56,7 +56,7 @@
                         <h4 class="modal-title">Add Item to Watchlist</h4>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('watchlist.add_item') }}" method="post">
+                        <form action="{{ url_for('watchlist.add') }}" method="post">
                             <dl>{{ render_field(add_item_form.watchlist) }}
                                 {{ render_field(add_item_form.ticker) }}
                                 {{ render_field(add_item_form.quantity) }}
@@ -142,7 +142,7 @@
                                             <h4 class="modal-title">Edit</h4>
                                         </div>
                                         <div class="modal-body">
-                                            <form action="{{ url_for('watchlist.update_item', id = item.id, watch_name = curr_watch_name) }}" method="post">
+                                            <form action="{{ url_for('watchlist.update', id = item.id, watch_name = curr_watch_name) }}" method="post">
                                                 <dl>{{ render_field(add_item_form.watchlist) }}
                                                     {{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
                                                     {{ render_field(add_item_form.quantity, value = item.quantity) }}
@@ -157,7 +157,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <form action="{{ url_for('watchlist.delete_item', id = item.id, watch_name = curr_watch_name) }}" method="post">
+                            <form action="{{ url_for('watchlist.delete', id = item.id, watch_name = curr_watch_name) }}" method="post">
                                 <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete Order ID {{ item.id }}?');" />
                             </form>
                         </td>
