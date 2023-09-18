@@ -208,7 +208,7 @@ def update(id, watch_name):
             item.comments = add_item_form.comments.data
             db.session.add(item)
             db.session.commit()
-        flash(f"The item '{item.ticker}' has been updated.")
+            flash(f"The item '{item.ticker}' has been updated.")
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
