@@ -6,7 +6,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
-from portfolio_builder.default_settings import Config
+from portfolio_builder.settings import Config
 
 
 db = SQLAlchemy()
