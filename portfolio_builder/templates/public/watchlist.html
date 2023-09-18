@@ -158,7 +158,7 @@
                                 </div>
                             </div>
                             <form action="{{ url_for('watchlist.delete', id = item.id, watch_name = curr_watch_name) }}" method="post">
-                                <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete Order ID {{ item.id }}?');" />
+                                <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete the item {{ item.ticker }}?');" />
                             </form>
                         </td>
                     </tr>

@@ -26,7 +26,7 @@ def get_watchlist_names():
     return [item[0] for item in watchlists]
 
 
-def get_watchlist_items(name):
+def get_watchlist_items(watch_name):
     watch_itm = aliased(WatchlistItem)
     watch = aliased(Watchlist)
     watchlist_items = (
@@ -36,7 +36,7 @@ def get_watchlist_items(name):
         .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
         .filter(
             watch.user_id == current_user.id,
-            watch.name == name,
+            watch.name == watch_name,
         )
         .with_entities(
             watch_itm.id,
@@ -114,7 +114,7 @@ def add_watchlist():
         )
         db.session.add(new_watchlist)
         db.session.commit()
-        flash(f"The Watchlist group '{watchlist_name}' has been created")
+        flash(f"The watchlist '{watchlist_name}' has been added.")
         return redirect(url_for('watchlist.index'))
     elif watchlist_form.errors:
         for error_name, error_desc in watchlist_form.errors.items():
@@ -143,6 +143,7 @@ def delete_watchlist():
         if watchlist:
             db.session.delete(watchlist)
             db.session.commit()
+            flash(f"The watchlist '{watchlist_name}' has been deleted.")
         return redirect(url_for('watchlist.index'))
 
 
@@ -157,7 +158,6 @@ def add():
     ]
     if form.validate_on_submit():
         watchlist_name = form.watchlist.data
-        ticker = form.ticker.data
         watchlist = (
             db
             .session
@@ -168,18 +168,18 @@ def add():
             )
             .first()
         )    
-        new_item = WatchlistItem(
+        item = WatchlistItem(
             watchlist=watchlist_name, 
-            ticker=ticker, 
+            ticker=form.ticker.data, 
             quantity=form.quantity.data,
             price=form.price.data, 
             sector=form.sector.data,
             comments=form.comments.data, 
             watchlist_id=watchlist.id
         )
-        db.session.add(new_item)
+        db.session.add(item)
         db.session.commit()
-        flash(f"{ticker} has been added to your watchlist")
+        flash(f"The item '{item.ticker}' has been added to the watchlist.")
     elif form.errors:
         for error_name, error_desc in form.errors.items():
             error_name = error_name.title()
@@ -208,7 +208,7 @@ def update(id, watch_name):
             item.comments = add_item_form.comments.data
             db.session.add(item)
             db.session.commit()
-            flash(f"Item with ticker {item.ticker} has been updated")
+        flash(f"The item '{item.ticker}' has been updated.")
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
@@ -223,4 +223,5 @@ def delete(id, watch_name):
     if item:
         db.session.delete(item)
         db.session.commit()
+        flash(f"The item '{item.ticker}' has been deleted from the watchlist.")
     return redirect(url_for('watchlist.index'))
