@@ -5,7 +5,7 @@ from sqlalchemy.orm import aliased
 
 from portfolio_builder import db
 from portfolio_builder.public.forms import (
-    WatchlistAddForm, WatchlistSelectForm, WatchlistAddItemForm
+    AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
 from portfolio_builder.public.models import Watchlist, WatchlistItem
 
@@ -75,9 +75,9 @@ def get_watchlist_item(id, watch_name):
 @login_required
 def index():
     watch_names = get_watchlist_names()
-    select_form = WatchlistSelectForm()
-    add_watchlist_form = WatchlistAddForm()
-    add_item_form = WatchlistAddItemForm()
+    select_form = SelectWatchlistForm()
+    add_watchlist_form = AddWatchlistForm()
+    add_item_form = AddItemForm()
     select_form.watchlist.choices =  [
         (item, item)
         for item in watch_names
@@ -105,7 +105,7 @@ def index():
 @bp.route('/add_watchlist', methods=['POST'])
 @login_required
 def add_watchlist():
-    watchlist_form = WatchlistAddForm()
+    watchlist_form = AddWatchlistForm()
     if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
         new_watchlist = Watchlist(
@@ -151,13 +151,13 @@ def delete_watchlist():
 @login_required
 def add():
     watchlists = get_watchlist_names()
-    form = WatchlistAddItemForm()
-    form.watchlist.choices = [
+    add_item_form = AddItemForm()
+    add_item_form.watchlist.choices = [
         (item, item)
         for item in watchlists
     ]
-    if form.validate_on_submit():
-        watchlist_name = form.watchlist.data
+    if add_item_form.validate_on_submit():
+        watchlist_name = add_item_form.watchlist.data
         watchlist = (
             db
             .session
@@ -170,18 +170,18 @@ def add():
         )    
         item = WatchlistItem(
             watchlist=watchlist_name, 
-            ticker=form.ticker.data, 
-            quantity=form.quantity.data,
-            price=form.price.data, 
-            sector=form.sector.data,
-            comments=form.comments.data, 
+            ticker=add_item_form.ticker.data, 
+            quantity=add_item_form.quantity.data,
+            price=add_item_form.price.data, 
+            sector=add_item_form.sector.data,
+            comments=add_item_form.comments.data, 
             watchlist_id=watchlist.id
         )
         db.session.add(item)
         db.session.commit()
         flash(f"The item '{item.ticker}' has been added to the watchlist.")
-    elif form.errors:
-        for error_name, error_desc in form.errors.items():
+    elif add_item_form.errors:
+        for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
             flash(f"{error_name}: {error_desc[0]}")
     return redirect(url_for("watchlist.index"))
@@ -191,7 +191,7 @@ def add():
 @login_required
 def update(id, watch_name):
     watchlists = get_watchlist_names()
-    add_item_form = WatchlistAddItemForm()
+    add_item_form = AddItemForm()
     add_item_form.watchlist.choices =  [
         (item, item)
         for item in watchlists
