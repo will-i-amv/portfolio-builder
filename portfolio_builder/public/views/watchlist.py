@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, request, flash, redirect, render_template, url_for
 from flask_login import login_required
 from sqlalchemy.orm import aliased
 
@@ -101,7 +101,22 @@ def add_watchlist():
 @bp.route('/delete', methods=('POST',))
 @login_required
 def delete_watchlist():
-    return redirect(url_for('watchlist.index'))
+    if not request.method == "POST":
+        return redirect(url_for('watchlist.index'))
+    else:
+        watchlist_name = request.form.get('watchlist_group_removed')
+        watchlist = (
+            Watchlist
+            .query
+            .filter_by(
+                name=watchlist_name, 
+                user_id=current_user.id
+            )
+            .first()
+        )
+        db.session.delete(watchlist)
+        db.session.commit()
+        return redirect(url_for('watchlist.index'))
 
 
 @bp.route('/add_item', methods=['POST'])
