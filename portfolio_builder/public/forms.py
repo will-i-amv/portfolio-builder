@@ -14,12 +14,12 @@ from portfolio_builder.public.models import (
 )
 
 
-class WatchlistSelectForm(FlaskForm):
+class SelectWatchlistForm(FlaskForm):
     watchlist = SelectField("Select a Watchlist",  validators=[v.InputRequired()])
     submit = SubmitField("Get Overview")
 
 
-class WatchlistAddForm(FlaskForm):
+class AddWatchlistForm(FlaskForm):
     name = StringField(
         "Watchlist Name",
         validators=[v.InputRequired(), v.Length(min=1, max=25)]
@@ -39,7 +39,7 @@ class WatchlistAddForm(FlaskForm):
             )
 
 
-class WatchlistAddItemForm(FlaskForm):
+class AddItemForm(FlaskForm):
     order_id = HiddenField("")
     watchlist = SelectField("Watchlist",  validators=[v.InputRequired()])
     ticker = StringField(

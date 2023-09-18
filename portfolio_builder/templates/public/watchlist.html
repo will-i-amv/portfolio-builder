@@ -7,24 +7,38 @@
 {% from '_utils.html' import render_field %}
 
 {% block header %}
-    {% if watchlist_name %}
+    {% if not curr_watch_name %}
+        <div class="Welcome2">
+            <h1 class="main-heading2">You do not have any active watchlists. Create a watchlist <a data-toggle="modal" data-target="#mymodal5">here</a></h1>
+        </div>
+    {% else %}
         <h1 class="main-heading">
             {% block title %}
-                Entries for <span class="watchlist-name-title">{{ watchlist_name }}</span>
+                Entries for watchlist <span class="watchlist-name-title">{{ curr_watch_name }}</span>
             {% endblock %}
         </h1>
-    {% else %}
-        <div class="Welcome2">
-            <h1 class="main-heading2">You do not have any active watchlists.</h1>
-            <li class="create-watchlist">
-                <a data-toggle="modal" data-target="#mymodal5">Create a watchlist here</a>
-            </li>
-        </div>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-    {% if watchlist_name %}
+    {% if not curr_watch_name %}
+        <div id="mymodal5" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Create Watchlist</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
+                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
+                            <p>{{ add_watchlist_form.submit() }}</p>
+                            {{ add_watchlist_form.csrf_token }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
         <form class="group-selection" action="{{ url_for('watchlist.index') }}" method="post">
             <span class="selection-label">
                 <dl>{{ render_field(select_form.watchlist) }}</dl>
@@ -32,17 +46,17 @@
                 {{ select_form.csrf_token }}
             </span>
         </form>
-        <br/>
-        <br/>
-        <button type="button" class="btn-new-wl-item" data-toggle="modal" data-target="#mymodal">Add to Watchlist</button>
+        <br />
+        <br />
+        <button type="button" class="btn-new-wl-item" data-toggle="modal" data-target="#mymodal">Add Item to Watchlist</button>
         <div id="mymodal" class="modal fade" role="dialog">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal-title">Add to Watchlist</h4>
+                        <h4 class="modal-title">Add Item to Watchlist</h4>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('watchlist.add_watchlist_item') }}" method="post">
+                        <form action="{{ url_for('watchlist.add') }}" method="post">
                             <dl>{{ render_field(add_item_form.watchlist) }}
                                 {{ render_field(add_item_form.ticker) }}
                                 {{ render_field(add_item_form.quantity) }}
@@ -85,8 +99,8 @@
                         <form class="group-removal" action="{{ url_for('watchlist.delete_watchlist') }}" method="post">
                             <span class="selection-label">Select a Watchlist</span>
                             <select class="watchlist-selector" name="watchlist_group_removed">
-                                {% for name in watchlists %}
-                                <option value="{{watchlist_name}}">{{name}}</option>
+                                {% for name in watch_names %}
+                                    <option value="{{ name }}">{{ name }}</option>
                                 {% endfor %}
                             </select>
                             <button type="submit" class="btn-new-wl">Remove Watchlist</button>
@@ -105,11 +119,12 @@
                     <th>Price</th>
                     <th>Sector</th>
                     <th>Trade Date</th>
-                    <th>comments</th>
+                    <th>Comments</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in watchlist_items %}
+                {% for item in watch_items %}
                     <tr class="watchlist-rows">
                         <td class="c1">{{ item.id }}</td>
                         <td class="c2">{{ item.ticker }}</td>
@@ -118,27 +133,38 @@
                         <td class="c5">{{ item.sector }}</td>
                         <td class="c6">{{ item.trade_date.strftime('%d-%m-%Y') }}</td>
                         <td>{{ item.comments }}</td>
+                        <td class="edit-trade">
+                            <button type="button" class="btn-new-wl" data-toggle="modal" data-target="#mymodal2{{ item.id }}">Edit</button>
+                            <div id="mymodal2{{ item.id }}" class="modal fade" role="dialog">
+                                <div class="modal-dialog" id="{{ item.id }}">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h4 class="modal-title">Edit</h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form action="{{ url_for('watchlist.update', id = item.id, watch_name = curr_watch_name) }}" method="post">
+                                                <dl>{{ render_field(add_item_form.watchlist) }}
+                                                    {{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
+                                                    {{ render_field(add_item_form.quantity, value = item.quantity) }}
+                                                    {{ render_field(add_item_form.price, value = item.price) }}
+                                                    {{ render_field(add_item_form.trade_date, value = item.trade_date.strftime('%Y-%m-%d %H:%M:%S')) }}
+                                                    {{ render_field(add_item_form.sector, value = item.sector) }}
+                                                    {{ render_field(add_item_form.comments, default = item.comments) }}</dl>
+                                                {{ add_item_form.csrf_token }}
+                                                <button type="submit" name="button" class="btn btn-primary">Save Changes</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <form action="{{ url_for('watchlist.delete', id = item.id, watch_name = curr_watch_name) }}" method="post">
+                                <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete the item {{ item.ticker }}?');" />
+                            </form>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
         <script src="{{ url_for('static', filename = 'javascript/watchlist-filter.js') }}"></script>
-    {% else %}
-        <div id="mymodal5" class="modal fade" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">Create Watchlist</h4>
-                    </div>
-                    <div class="modal-body">
-                        <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
-                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
-                            <p>{{ add_watchlist_form.submit() }}</p>
-                            {{ add_watchlist_form.csrf_token }}
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
     {% endif %}
 {% endblock %}
