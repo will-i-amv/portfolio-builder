@@ -25,6 +25,32 @@ def get_watchlist_names():
     )
     return [item[0] for item in watchlists]
 
+def get_watchlist_items(name):
+    watch_itm = aliased(WatchlistItem)
+    watch = aliased(Watchlist)
+    watchlist_items = (
+        db
+        .session
+        .query(watch_itm)
+        .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
+        .filter(
+            watch.user_id == current_user.id,
+            watch.name == name,
+        )
+        .with_entities(
+            watch_itm.id,
+            watch_itm.ticker,
+            watch_itm.quantity,
+            watch_itm.price,
+            watch_itm.sector,
+            watch_itm.trade_date,
+            watch_itm.created_timestamp,
+            watch_itm.comments,
+        )
+        .all()
+    )
+    return watchlist_items
+
 
 @bp.route("/", methods=('GET', 'POST'))
 @login_required
@@ -44,29 +70,7 @@ def index():
         watchlist_name = select_form.watchlist.data
     else:
         watchlist_name = next(iter(watchlists), '')
-    watch_itm = aliased(WatchlistItem)
-    watch = aliased(Watchlist)
-    watchlist_items = (
-        db
-        .session
-        .query(watch_itm)
-        .join(watch, onclause=(watch_itm.watchlist_id==watch.id))
-        .filter(
-            watch.user_id == current_user.id,
-            watch.name == watchlist_name,
-        )
-        .with_entities(
-            watch_itm.id,
-            watch_itm.ticker,
-            watch_itm.quantity,
-            watch_itm.price,
-            watch_itm.sector,
-            watch_itm.trade_date,
-            watch_itm.created_timestamp,
-            watch_itm.comments,
-        )
-        .all()
-    )
+    watchlist_items = get_watchlist_items(watchlist_name)
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,
