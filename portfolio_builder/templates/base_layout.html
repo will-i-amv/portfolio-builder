@@ -26,11 +26,9 @@
                 <li>
                     <span class="username">USER: {{ current_user.username | upper }}</span>
                 </li>
-            {% endif %}
-            <li>
-                <a href="{{ url_for('watchlist.index') }}">WATCHLIST</a>
-            </li>
-            {% if current_user.is_authenticated %}
+                <li>
+                    <a href="{{ url_for('watchlist.index') }}">WATCHLIST</a>
+                </li>
                 <li>
                     <a href="{{ url_for('auth.logout') }}">LOG OUT</a>
                 </li>
