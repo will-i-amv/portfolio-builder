@@ -129,7 +129,7 @@
                                             <h4 class="modal-title">Edit</h4>
                                         </div>
                                         <div class="modal-body">
-                                            <form action="{{ url_for('watchlist.update_item', id=item.id, ticker=item.ticker) }}"
+                                            <form action="{{ url_for('watchlist.update_item', id=item.id, watchlist_name=watchlist_name) }}"
                                                 method="post">
                                                 <dl>
                                                     {{ render_field(add_item_form.watchlist) }}
@@ -147,7 +147,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <form action="{{ url_for('watchlist.delete_item', id=item.id) }}" method="post">
+                            <form action="{{ url_for('watchlist.delete_item', id=item.id, watchlist_name=watchlist_name) }}" method="post">
                                 <input class="danger" type="submit" value="Delete"
                                     onclick="return confirm('Are you sure you want to delete Order ID {{item.id}}?');">
                             </form>

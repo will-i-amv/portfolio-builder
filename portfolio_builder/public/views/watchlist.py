@@ -159,14 +159,75 @@ def add_item():
     return redirect(url_for("watchlist.index"))
 
 
-@bp.route('/<int:id>/<ticker>/update_item', methods=['POST'])
+@bp.route('/<int:id>/<watchlist_name>/update_item', methods=['POST'])
 @login_required
-def update_item(id, ticker):
+def update_item(id, watchlist_name):
+    watchlists = get_watchlist_names()
+    add_item_form = WatchlistAddItemForm()
+    add_item_form.watchlist.choices =  [
+        (item, item)
+        for item in watchlists
+    ]
+    if add_item_form.validate_on_submit():
+        watchlist = (
+            db
+            .session
+            .query(Watchlist)
+            .filter(
+                Watchlist.user_id==current_user.id,
+                Watchlist.name==watchlist_name
+                )
+            .first()
+        )    
+        item = (
+            WatchlistItem
+            .query
+            .filter_by(
+                watchlist_id=watchlist.id,
+                id=id, 
+            )
+            .first()
+        )
+        item.ticker = add_item_form.ticker.data
+        item.watchlist = add_item_form.watchlist.data
+        item.quantity = add_item_form.quantity.data
+        item.price = add_item_form.price.data
+        item.trade_date = add_item_form.trade_date.data
+        item.sector = add_item_form.sector.data
+        item.comments = add_item_form.comments.data
+        db.session.add(item)
+        db.session.commit()
+        flash(f"Item with ticker {item.ticker} has been updated")
+    elif add_item_form.errors:
+        for error_name, error_desc in add_item_form.errors.items():
+            error_name = error_name.title()
+            flash(f"{error_name}: {error_desc[0]}")
     return redirect(url_for("watchlist.index"))
 
 
-
-@bp.route('/<int:id>/delete_item', methods=['POST'])
+@bp.route('/<int:id>/<watchlist_name>/delete_item', methods=['POST'])
 @login_required
-def delete_item(id):
-    return redirect(url_for("watchlist.index"))
+def delete_item(id, watchlist_name):
+    watchlist = (
+        db
+        .session
+        .query(Watchlist)
+        .filter(
+            Watchlist.user_id==current_user.id,
+            Watchlist.name==watchlist_name
+            )
+        .first()
+    )    
+    item = (
+        WatchlistItem
+        .query
+        .filter_by(
+            watchlist_id=watchlist.id,
+            id=id, 
+        )
+        .first()
+    )
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+    return redirect(url_for('watchlist.index'))
