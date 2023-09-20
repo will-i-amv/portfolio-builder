@@ -122,8 +122,6 @@ def load_securities():
 
 
 def load_prices(tickers, start_date, end_date):
-    app = current_app._get_current_object()
-    API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     ticker_ids = dict(
         db
         .session
@@ -132,10 +130,13 @@ def load_prices(tickers, start_date, end_date):
         .with_entities(Security.ticker, Security.id)
         .all()
     )
-    df = get_prices_tiingo(API_KEY_TIINGO, ticker_ids, start_date, end_date)
-    df.to_sql(
-        "prices",
-        con=db.engine,
-        if_exists="append",
-        index=False
-    )
+    if ticker_ids:
+        app = current_app._get_current_object()
+        API_KEY_TIINGO = app.config['API_KEY_TIINGO']
+        df = get_prices_tiingo(API_KEY_TIINGO, ticker_ids, start_date, end_date)
+        df.to_sql(
+            "prices",
+            con=db.engine,
+            if_exists="append",
+            index=False
+        )
