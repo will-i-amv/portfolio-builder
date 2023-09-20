@@ -18,18 +18,14 @@ EXCHANGES = [
     'NYSE MKT',
     'NASDAQ',
 ]
-app = current_app._get_current_object()
-API_KEY_TIINGO = app.config['API_KEY_TIINGO']
-API_KEY_EODHD = app.config['API_KEY_EODHD']
-tiingo_client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
 
 
-def get_securities_eodhd():
+def get_securities_eodhd(api_key):
     df = pd.DataFrame()
     for exchange in EXCHANGES:
         url = (
             f'https://eodhistoricaldata.com/api/exchange-symbol-list/' +
-            f'{exchange}?api_token={API_KEY_EODHD}'
+            f'{exchange}?api_token={api_key}'
         )
         response = requests.get(url)
         df = pd.concat([df, pd.read_csv(StringIO(response.text))])
@@ -53,7 +49,8 @@ def get_securities_eodhd():
     return df_cleaned
 
 
-def get_securities_tiingo():
+def get_securities_tiingo(api_key):
+    tiingo_client = TiingoClient({'session': True, 'api_key': api_key})
     df = pd.DataFrame(tiingo_client.list_stock_tickers())
     df_cleaned = (
         df
@@ -72,11 +69,14 @@ def get_securities_tiingo():
 
 
 def load_securities():
+    app = current_app._get_current_object()
+    API_KEY_TIINGO = app.config['API_KEY_TIINGO']
+    API_KEY_EODHD = app.config['API_KEY_EODHD']
     if not (API_KEY_TIINGO and API_KEY_EODHD):
         df_cleaned = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
     else:
-        df_eodhd = get_securities_eodhd()
-        df_tiingo = get_securities_tiingo()
+        df_eodhd = get_securities_eodhd(API_KEY_EODHD)
+        df_tiingo = get_securities_tiingo(API_KEY_TIINGO)
         df_cleaned = (
             pd
             .merge(
@@ -97,6 +97,9 @@ def load_securities():
 
 
 def load_prices(tickers, start_date, end_date):
+    app = current_app._get_current_object()
+    API_KEY_TIINGO = app.config['API_KEY_TIINGO']
+    tiingo_client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
     df = tiingo_client.get_dataframe(
         tickers,
         frequency='daily',

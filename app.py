@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from portfolio_builder import create_app, db
 from portfolio_builder.auth.models import User
 from portfolio_builder.public.models import Security, Price, Watchlist, WatchlistItem
+from portfolio_builder.tasks import load_securities, load_prices
 
 
 app = create_app()
@@ -24,8 +25,6 @@ def make_shell_context():
 
 @app.cli.command()
 def init_db():
-    from portfolio_builder.tasks import load_securities, load_prices
-
     common_tech_stocks = [
         'META', 
         'GOOGL', 
