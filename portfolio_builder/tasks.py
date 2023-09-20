@@ -23,19 +23,19 @@ API_KEY_EODHD = app.config['API_KEY_EODHD']
 tiingo_client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
 
 
-def get_data_eodhd():
-    df_eodhd = pd.DataFrame()
+def get_securities_eodhd():
+    df = pd.DataFrame()
     for exchange in EXCHANGES:
         url = (
             f'https://eodhistoricaldata.com/api/exchange-symbol-list/' +
             f'{exchange}?api_token={API_KEY_EODHD}'
         )
         response = requests.get(url)
-        df_eodhd = pd.concat([df_eodhd, pd.read_csv(StringIO(response.text))])
+        df = pd.concat([df, pd.read_csv(StringIO(response.text))])
         time.sleep(1.0 + round(random.random(), 2))
-    df_eodhd.columns = [col.lower() for col in df_eodhd.columns]
-    df_eodhd_cleaned = (
-        df_eodhd
+    df.columns = [col.lower() for col in df.columns]
+    df_cleaned = (
+        df
         .loc[lambda x: x['code'].notna()]
         .loc[lambda x: x['exchange'].isin(EXCHANGES)]
         .rename(columns={
@@ -49,13 +49,13 @@ def get_data_eodhd():
         .fillna({'isin': ''})
         .loc[lambda x: x['asset_type'] == 'Stock']
     )
-    return df_eodhd_cleaned
+    return df_cleaned
 
 
-def get_data_tiingo():
-    df_tiingo = pd.DataFrame(tiingo_client.list_stock_tickers())
-    df_tiingo_cleaned = (
-        df_tiingo
+def get_securities_tiingo():
+    df = pd.DataFrame(tiingo_client.list_stock_tickers())
+    df_cleaned = (
+        df
         .loc[lambda x: x['ticker'].notna()]
         .loc[lambda x: x['startDate'].notna()]
         .loc[lambda x: x['endDate'].notna()]
@@ -67,20 +67,20 @@ def get_data_tiingo():
         })
         .loc[lambda x: x['asset_type'] == 'Stock']
     )
-    return df_tiingo_cleaned
+    return df_cleaned
 
 
 def load_securities():
     if not (API_KEY_TIINGO and API_KEY_EODHD):
         df_cleaned = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
     else:
-        df_eodhd_cleaned = get_data_eodhd()
-        df_tiingo_cleaned = get_data_tiingo()
+        df_eodhd = get_securities_eodhd()
+        df_tiingo = get_securities_tiingo()
         df_cleaned = (
             pd
             .merge(
-                df_tiingo_cleaned,
-                df_eodhd_cleaned,
+                df_tiingo,
+                df_eodhd,
                 on=['ticker', 'exchange', 'asset_type', 'currency'],
                 how='inner'
             )
