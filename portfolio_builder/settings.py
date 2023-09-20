@@ -22,6 +22,5 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f'{DB_URL}/main'
     SQLALCHEMY_BINDS = {
         "Main": (f'{DB_URL}/main'),
-        "Prices": (f'{DB_URL}/prices'),
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
