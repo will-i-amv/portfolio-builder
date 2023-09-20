@@ -4,10 +4,10 @@ from io import StringIO
 
 import pandas as pd
 import requests
-from sqlalchemy import create_engine
+from flask import current_app
 from tiingo import TiingoClient
 
-from settings import Config
+from portfolio_builder import db
 
 
 EXCHANGES = [
@@ -17,10 +17,10 @@ EXCHANGES = [
     'NYSE MKT',
     'NASDAQ',
 ]
-API_KEY_TIINGO = Config.API_KEY_TIINGO
-API_KEY_EODHD = Config.API_KEY_EODHD
-engine = create_engine(Config.SQLALCHEMY_BINDS['Main'])
-
+app = current_app._get_current_object()
+API_KEY_TIINGO = app.config['API_KEY_TIINGO']
+API_KEY_EODHD = app.config['API_KEY_EODHD']
+tiingo_client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
 
 
 def get_data_eodhd():
@@ -53,8 +53,7 @@ def get_data_eodhd():
 
 
 def get_data_tiingo():
-    client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
-    df_tiingo = pd.DataFrame(client.list_stock_tickers())
+    df_tiingo = pd.DataFrame(tiingo_client.list_stock_tickers())
     df_tiingo_cleaned = (
         df_tiingo
         .loc[lambda x: x['ticker'].notna()]
@@ -73,7 +72,7 @@ def get_data_tiingo():
 
 def load_securities():
     if not (API_KEY_TIINGO and API_KEY_EODHD):
-        df_cleaned = pd.read_csv(Config.ROOT_DIR + '/data/securities.csv')
+        df_cleaned = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
     else:
         df_eodhd_cleaned = get_data_eodhd()
         df_tiingo_cleaned = get_data_tiingo()
@@ -90,10 +89,7 @@ def load_securities():
         )
     df_cleaned.to_sql(
         "securities",
-        con=engine,
+        con=db.engine,
         if_exists="append",
         index=False
     )
-
-
-load_securities()

@@ -19,3 +19,9 @@ def make_shell_context():
         "Watchlist": Watchlist,
         "WatchlistItem": WatchlistItem
     }
+
+
+@app.cli.command()
+def init_db():
+    from portfolio_builder.tasks import load_securities
+    load_securities()
