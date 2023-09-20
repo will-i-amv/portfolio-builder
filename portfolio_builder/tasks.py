@@ -68,6 +68,31 @@ def get_securities_tiingo(api_key):
     return df_cleaned
 
 
+def get_prices_tiingo(api_key, ticker_ids, start_date, end_date):
+    tiingo_client = TiingoClient({'session': True, 'api_key': api_key})
+    tickers = [ticker for ticker, _ in ticker_ids.items()]
+    df = tiingo_client.get_dataframe(
+        tickers,
+        frequency='daily',
+        metric_name='close',
+        startDate=start_date,
+        endDate=end_date,
+    )
+    df.columns = [
+        (col if col == 'index' else ticker_ids[col])
+        for col in df.columns
+    ]
+    df_cleaned = (
+        df
+        .reset_index()
+        .rename(columns={'index': 'date'})
+        .melt('date', var_name='ticker_id', value_name='close_price')
+        .assign(**{'date': lambda x: pd.to_datetime(x['date'])})
+        .astype({'ticker_id': 'int64', 'close_price': 'float64'})
+    )
+    return df_cleaned
+
+
 def load_securities():
     app = current_app._get_current_object()
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
@@ -99,14 +124,6 @@ def load_securities():
 def load_prices(tickers, start_date, end_date):
     app = current_app._get_current_object()
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
-    tiingo_client = TiingoClient({'session': True, 'api_key': API_KEY_TIINGO})
-    df = tiingo_client.get_dataframe(
-        tickers,
-        frequency='daily',
-        metric_name='close',
-        startDate=start_date,
-        endDate=end_date,
-    )
     ticker_ids = dict(
         db
         .session
@@ -115,22 +132,10 @@ def load_prices(tickers, start_date, end_date):
         .with_entities(Security.ticker, Security.id)
         .all()
     )
-    if ticker_ids:
-        df.columns = [
-            (col if col == 'index' else ticker_ids[col])
-            for col in df.columns
-        ]
-        df_cleaned = (
-            df
-            .reset_index()
-            .rename(columns={'index': 'date'})
-            .melt('date', var_name='ticker_id', value_name='close_price')
-            .assign(**{'date': lambda x: pd.to_datetime(x['date'])})
-            .astype({'ticker_id': 'int64', 'close_price': 'float64'})
-        )
-        df_cleaned.to_sql(
-            "prices",
-            con=db.engine,
-            if_exists="append",
-            index=False
-        )
+    df = get_prices_tiingo(API_KEY_TIINGO, ticker_ids, start_date, end_date)
+    df.to_sql(
+        "prices",
+        con=db.engine,
+        if_exists="append",
+        index=False
+    )
