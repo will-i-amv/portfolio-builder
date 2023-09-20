@@ -112,12 +112,14 @@ def index():
     else:
         curr_watch_name = next(iter(watch_names), '')
     watch_items = get_watchlist_items(curr_watch_name)
+    securities = db.session.query(Security).all()
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,
         add_watchlist_form=add_watchlist_form,
         add_item_form=add_item_form,
         curr_watch_name=curr_watch_name,
+        securities=securities,
         watch_names=watch_names,
         watch_items=watch_items,
     )
