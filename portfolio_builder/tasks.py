@@ -8,6 +8,7 @@ from flask import current_app
 from tiingo import TiingoClient
 
 from portfolio_builder import db
+from portfolio_builder.public.models import Security
 
 
 EXCHANGES = [
@@ -93,3 +94,40 @@ def load_securities():
         if_exists="append",
         index=False
     )
+
+
+def load_prices(tickers, start_date, end_date):
+    df = tiingo_client.get_dataframe(
+        tickers,
+        frequency='daily',
+        metric_name='close',
+        startDate=start_date,
+        endDate=end_date,
+    )
+    ticker_ids = dict(
+        db
+        .session
+        .query(Security)
+        .filter(Security.ticker.in_(tickers))
+        .with_entities(Security.ticker, Security.id)
+        .all()
+    )
+    if ticker_ids:
+        df.columns = [
+            (col if col == 'index' else ticker_ids[col])
+            for col in df.columns
+        ]
+        df_cleaned = (
+            df
+            .reset_index()
+            .rename(columns={'index': 'date'})
+            .melt('date', var_name='ticker_id', value_name='close_price')
+            .assign(**{'date': lambda x: pd.to_datetime(x['date'])})
+            .astype({'ticker_id': 'int64', 'close_price': 'float64'})
+        )
+        df_cleaned.to_sql(
+            "prices",
+            con=db.engine,
+            if_exists="append",
+            index=False
+        )
