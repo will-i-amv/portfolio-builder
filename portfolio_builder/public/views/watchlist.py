@@ -31,7 +31,6 @@ def check_prices(ticker):
         end_date = dt.date.today() - dt.timedelta(days=1)
         start_date = end_date - dt.timedelta(days=100)
         load_prices([ticker], start_date, end_date)
-        print('Loaded prices on the DB')
 
 
 def get_watchlist_names():
