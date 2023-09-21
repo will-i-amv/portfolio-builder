@@ -109,6 +109,46 @@
                 </div>
             </div>
         </div>
+        <button type="button" class="btn-new-wl" data-toggle="modal" data-target="#mymodal6">Get All Securities</button>
+        <div id="mymodal6" class="modal fade" role="dialog">
+            <div class="modal-dialog modal-lg" style="width:70%">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">All Securities</h4>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" class="filter-bar2" id="filter-tradeable-securities" placeholder="Filter..." />
+                        <div class="all-securities-table-container">
+                            <table class="all-tradeable-securities" id="all-tradeable-securities">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Ticker</th>
+                                        <th>Exchange</th>
+                                        <th>Currency</th>
+                                        <th>Country</th>
+                                        <th>ISIN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in securities %}
+                                        <tr class="security-rows">
+                                            <td>{{ item.name }}</td>
+                                            <td>{{ item.ticker }}</td>
+                                            <td>{{ item.exchange }}</td>
+                                            <td>{{ item.currency }}</td>
+                                            <td>{{ item.country }}</td>
+                                            <td>{{ item.isin }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <script src="{{ url_for('static', filename = 'javascript/watchlist-all-security-filter.js') }}"></script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <input type="text" class="filter-bar" id="filter" placeholder="Filter..." />
         <table class="all-trades" id="all-trades">
             <thead>

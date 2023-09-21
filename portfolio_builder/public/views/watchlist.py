@@ -1,3 +1,5 @@
+import datetime as dt
+
 from flask_login import current_user
 from flask import Blueprint, request, flash, redirect, render_template, url_for
 from flask_login import login_required
@@ -7,10 +9,28 @@ from portfolio_builder import db
 from portfolio_builder.public.forms import (
     AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
-from portfolio_builder.public.models import Watchlist, WatchlistItem
+from portfolio_builder.public.models import Price, Security, Watchlist, WatchlistItem
+from portfolio_builder.tasks import load_prices
 
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
+
+
+def check_prices(ticker):
+    price = aliased(Price)
+    sec = aliased(Security)
+    first_price = (
+        db
+        .session
+        .query(price)
+        .join(sec, onclause=(price.ticker_id==sec.id))
+        .filter(sec.ticker == ticker)
+        .first()
+    )
+    if not first_price:
+        end_date = dt.date.today() - dt.timedelta(days=1)
+        start_date = end_date - dt.timedelta(days=100)
+        load_prices([ticker], start_date, end_date)
 
 
 def get_watchlist_names():
@@ -91,12 +111,14 @@ def index():
     else:
         curr_watch_name = next(iter(watch_names), '')
     watch_items = get_watchlist_items(curr_watch_name)
+    securities = db.session.query(Security).all()
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,
         add_watchlist_form=add_watchlist_form,
         add_item_form=add_item_form,
         curr_watch_name=curr_watch_name,
+        securities=securities,
         watch_names=watch_names,
         watch_items=watch_items,
     )
@@ -179,6 +201,7 @@ def add():
         )
         db.session.add(item)
         db.session.commit()
+        check_prices(item.ticker)
         flash(f"The item '{item.ticker}' has been added to the watchlist.")
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():

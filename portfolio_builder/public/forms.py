@@ -1,5 +1,3 @@
-import datetime as dt
-
 from flask_login import current_user
 from flask_wtf import FlaskForm
 from wtforms import validators as v
@@ -8,6 +6,7 @@ from wtforms import (
     StringField, SubmitField, SelectField, TextAreaField
 )
 
+from portfolio_builder import db
 from portfolio_builder.public.models import (
     get_default_date, Security, Watchlist, 
     WatchlistItem
@@ -71,3 +70,15 @@ class AddItemForm(FlaskForm):
     )
     submit = SubmitField("Add to Watchlist")
 
+    def validate_ticker(self, ticker):
+        ticker_db = (
+            db
+            .session
+            .query(Security)
+            .filter(Security.ticker==ticker.data)
+            .first()
+        )
+        if not ticker_db:
+            raise v.ValidationError(
+                f'The ticker "{ticker.data}" is unavailable.'
+            )

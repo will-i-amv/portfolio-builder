@@ -139,5 +139,4 @@ configuration.cfg
 # OTHER
 *.png
 *.dot
-*.csv
 *.db

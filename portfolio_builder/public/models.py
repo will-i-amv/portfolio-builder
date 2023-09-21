@@ -22,12 +22,40 @@ class Security(db.Model):
     currency = db.Column(db.String(3))
     country = db.Column(db.String(40))
     isin = db.Column(db.String(20))
+    prices = db.relationship(
+        "Price",
+        backref="securities", 
+        passive_deletes=True
+    )
 
     def __repr__(self):
         return (
             f"<Security Name: {self.name}, " + 
             f"Ticker Name: {self.ticker}, " + 
             f"Country: {self.country}>"
+        )
+
+
+class Price(db.Model):
+    __tablename__ = "prices"
+    __table_args__ = (
+        db.Index("idx_date_tickerid", 'date', 'ticker_id'),
+        db.Index("idx_tickerid_date", 'ticker_id', 'date'),
+    )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    close_price = db.Column(db.Numeric(11, 6), nullable=False)
+    ticker_id = db.Column(
+        db.Integer,
+        db.ForeignKey("securities.id"), 
+        nullable=False
+    )
+
+    def __repr__(self):
+        return (
+            f"<Date: {self.date}, " + 
+            f"Ticker ID: {self.ticker_id}, " + 
+            f"Close Price: {self.close_price}>"
         )
 
 
