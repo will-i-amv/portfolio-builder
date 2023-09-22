@@ -27,6 +27,9 @@
                     <span class="username">USER: {{ current_user.username | upper }}</span>
                 </li>
                 <li>
+                    <a href="{{ url_for('dashboard.index') }}">DASHBOARD</a>
+                </li>
+                <li>
                     <a href="{{ url_for('watchlist.index') }}">WATCHLIST</a>
                 </li>
                 <li>

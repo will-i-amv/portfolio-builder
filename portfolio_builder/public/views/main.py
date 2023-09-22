@@ -7,4 +7,4 @@ bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def index():
-    return redirect(url_for("auth.login"))
+    return redirect(url_for("dashboard.index"))
