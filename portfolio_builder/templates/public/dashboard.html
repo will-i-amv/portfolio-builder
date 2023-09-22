@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block content %}
-    {% if line_chart and curr_watchlist_name is defined %}
+    {% if line_chart != [] and curr_watchlist_name != '' %}
         <form class="group-selection" action="{{ url_for('dashboard.index') }}" method="post">
             <span class="selection-label">Select a Watchlist</span>
             <select class="watchlist-selector" name="watchlist_group_selection">
