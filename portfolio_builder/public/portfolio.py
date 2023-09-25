@@ -15,7 +15,6 @@ class PositionSummary:
     def __init__(self, trade_history):
         self.trade_history = trade_history
         self.average_cost = None
-        self.open_lots = None
         self.ticker = self.set_ticker()
         self.buy_quantities = deque([])
         self.buy_prices = deque([])
