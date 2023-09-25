@@ -25,10 +25,14 @@ class PositionSummary:
         self.open_direction = None
         self.breakdown = []
         self.net_position = 0
-        self._apply_fifo()
+        self.calc_fifo()
 
     def __repr__(self):
-        return (f"<Ticker: {self.ticker}, Quantity: {self.net_position}>")
+        return (
+            f"<Ticker: {self.ticker}, " + 
+            f"Quantity: {self.net_position}, " + 
+            f"Average Price: {self.average_cost}>"
+        )
 
     def set_ticker(self):
         # tickers = set([i.ticker for i in self.trade_history])
@@ -41,7 +45,7 @@ class PositionSummary:
                 "contains multiple tickers"
             )
 
-    def total_open_lots(self):
+    def calc_total_open_lots(self):
         """ returns the sum of the positions open lots"""
         if self.open_direction == "long":
             return sum(self.buy_quantities)
@@ -50,7 +54,7 @@ class PositionSummary:
         else:
             return None
 
-    def total_market_value(self):
+    def calc_total_market_value(self):
         """Returns the position's market value"""
         total = None
         if self.buy_quantities and self.open_direction == "long":
@@ -61,10 +65,10 @@ class PositionSummary:
             total = (quantity*price for quantity, price in zipped)
         return sum(total) if total is not None else None
 
-    def get_average_cost(self):
+    def calc_average_cost(self):
         """Returns the weighted average cost of the positions open lots."""
-        open_lots = self.total_open_lots()
-        market_value = self.total_market_value() 
+        open_lots = self.calc_total_open_lots()
+        market_value = self.calc_total_market_value() 
         if open_lots == 0 or not open_lots:
             return 0
         return abs(market_value / open_lots)
@@ -80,7 +84,7 @@ class PositionSummary:
             self.sell_dates.popleft()
         return popped_quantity
 
-    def _collapse_trade(self):
+    def collapse_trade(self):
         if self.sell_quantities:
             if self.sell_quantities[0] >= 0:
                 self.remove_trade("sell")
@@ -102,7 +106,7 @@ class PositionSummary:
         average_price = round(self.average_cost, 4)
         return Summary(ticker, quantity, average_price)
 
-    def add(self, side, units, price, date):
+    def add_trade(self, side, units, price, date):
         if side == "buy":
             self.buy_quantities.append(units)
             self.buy_prices.append(price)
@@ -112,7 +116,7 @@ class PositionSummary:
             self.sell_prices.append(price)
             self.sell_dates.append(date)
 
-    def _set_direction(self):
+    def set_direction(self):
         """
         Checks if there has been a reversal in the users overall
         trade direction and sets that direction accordingly.
@@ -129,16 +133,16 @@ class PositionSummary:
         date = self.trade_history[0].date
         if units >= 0:
             self.open_direction = "long"
-            self.add("buy", units, price, date)
+            self.add_trade("buy", units, price, date)
 
         else:
             self.open_direction = "short"
-            self.add("sell", units, price, date)
-        self.average_cost = self.get_average_cost()
-        self.net_position = self.total_open_lots()
+            self.add_trade("sell", units, price, date)
+        self.average_cost = self.calc_average_cost()
+        self.net_position = self.calc_total_open_lots()
         self.breakdown.append([date, self.net_position, self.average_cost])
 
-    def _apply_fifo(self):
+    def calc_fifo(self):
         """
         This algorithm iterate over the trade history. It sets the
         initial trade direction to get the initial open lots and then increases
@@ -151,29 +155,33 @@ class PositionSummary:
             self.set_initial_trade()
         else:
             return []
-        trades = len(self.trade_history)
-        c1 = 1  # counter
-        while c1 < trades:
-            units = self.trade_history[c1].quantity
-            price = self.trade_history[c1].price
-            # date = self.trade_history[c1].trade_date
-            date = self.trade_history[c1].date
-            if units*self.net_position > 0:  # if true both trades have the same sign
+        counter = 1
+        while counter < len(self.trade_history):
+            units = self.trade_history[counter].quantity
+            price = self.trade_history[counter].price
+            # date = self.trade_history[counter].trade_date
+            date = self.trade_history[counter].date
+            
+            # Both trades have the same sign
+            if units*self.net_position > 0:
                 if self.open_direction == "long":
-                    self.add("buy", units, price, date)
+                    self.add_trade("buy", units, price, date)
                 else:
-                    self.add("sell", units, price, date)
-            elif units*self.net_position == 0:  # position is flat
+                    self.add_trade("sell", units, price, date)
+            
+            # The position is flat
+            elif units*self.net_position == 0:
                 if units >= 0:
                     self.open_direction = "long"
-                    self.add("buy", units, price, date)
+                    self.add_trade("buy", units, price, date)
                 else:
                     self.open_direction = "short"
-                    self.add("sell", units, price, date)
-            else:  # both trades are in different directions
+                    self.add_trade("sell", units, price, date)
+            
+            # Both trades are in different directions
+            else:
                 if self.open_direction == "long":
-                    self.add("sell", units, price, date)
-                    # while the lots are not empty
+                    self.add_trade("sell", units, price, date)
                     while self.sell_quantities and self.buy_quantities:
                         if abs(self.sell_quantities[0]) >= self.buy_quantities[0]:
                             self.sell_quantities[0] += self.buy_quantities[0]
@@ -181,9 +189,9 @@ class PositionSummary:
                         else:
                             temp = self.remove_trade("sell")
                             self.buy_quantities[0] += temp
-                    self.net_position += units  # subtract units from net position
-                else:  # self.open_direction == "short"
-                    self.add("buy", units, price, date)
+                    self.net_position += units 
+                else:
+                    self.add_trade("buy", units, price, date)
                     while self.sell_quantities and self.buy_quantities:
                         if self.buy_quantities[0] >= abs(self.sell_quantities[0]):
                             self.buy_quantities[0] += self.sell_quantities[0]
@@ -192,12 +200,12 @@ class PositionSummary:
                             temp = self.remove_trade("buy")
                             self.sell_quantities[0] += temp
                     self.net_position += units
-            self._collapse_trade()
-            self._set_direction()
-            self.average_cost = round(self.get_average_cost(), 4)
-            self.net_position = self.total_open_lots()
+            self.collapse_trade()
+            self.set_direction()
+            self.average_cost = round(self.calc_average_cost(), 4)
+            self.net_position = self.calc_total_open_lots()
             self.breakdown.append([date, self.net_position, self.average_cost])
-            c1 += 1
+            counter += 1
 
 
 class PositionAccounting(PositionSummary):
