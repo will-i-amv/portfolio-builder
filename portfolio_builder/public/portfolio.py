@@ -73,49 +73,6 @@ class PositionSummary:
             return 0
         return abs(market_value / open_lots)
 
-    def remove_trade(self, direction):
-        if direction == "buy":
-            popped_quantity = self.buy_quantities.popleft()
-            self.buy_prices.popleft()
-            self.buy_dates.popleft()
-        elif direction == "sell":
-            popped_quantity = self.sell_quantities.popleft()
-            self.sell_prices.popleft()
-            self.sell_dates.popleft()
-        return popped_quantity
-
-    def collapse_trade(self):
-        if self.sell_quantities:
-            if self.sell_quantities[0] >= 0:
-                self.remove_trade("sell")
-        if self.buy_quantities:
-            if self.buy_quantities[0] <= 0:
-                self.remove_trade("buy")
-
-    def get_summary(self):
-        """
-        Returns a named tuple of the ticker, net position and the average
-        price of the opens lots
-        """
-        Summary = namedtuple(
-            "Summary",
-            ["ticker", "quantity", "average_price"]
-        )
-        ticker = self.ticker
-        quantity = self.net_position
-        average_price = round(self.average_cost, 4)
-        return Summary(ticker, quantity, average_price)
-
-    def add_trade(self, side, units, price, date):
-        if side == "buy":
-            self.buy_quantities.append(units)
-            self.buy_prices.append(price)
-            self.buy_dates.append(date)
-        elif side == "sell":
-            self.sell_quantities.append(units)
-            self.sell_prices.append(price)
-            self.sell_dates.append(date)
-
     def set_direction(self):
         """
         Checks if there has been a reversal in the users overall
@@ -142,6 +99,35 @@ class PositionSummary:
         self.net_position = self.calc_total_open_lots()
         self.breakdown.append([date, self.net_position, self.average_cost])
 
+    def add_trade(self, side, units, price, date):
+        if side == "buy":
+            self.buy_quantities.append(units)
+            self.buy_prices.append(price)
+            self.buy_dates.append(date)
+        elif side == "sell":
+            self.sell_quantities.append(units)
+            self.sell_prices.append(price)
+            self.sell_dates.append(date)
+
+    def remove_trade(self, direction):
+        if direction == "buy":
+            popped_quantity = self.buy_quantities.popleft()
+            self.buy_prices.popleft()
+            self.buy_dates.popleft()
+        elif direction == "sell":
+            popped_quantity = self.sell_quantities.popleft()
+            self.sell_prices.popleft()
+            self.sell_dates.popleft()
+        return popped_quantity
+
+    def collapse_trade(self):
+        if self.sell_quantities:
+            if self.sell_quantities[0] >= 0:
+                self.remove_trade("sell")
+        if self.buy_quantities:
+            if self.buy_quantities[0] <= 0:
+                self.remove_trade("buy")
+
     def calc_fifo(self):
         """
         This algorithm iterate over the trade history. It sets the
@@ -155,6 +141,7 @@ class PositionSummary:
             self.set_initial_trade()
         else:
             return []
+
         counter = 1
         while counter < len(self.trade_history):
             units = self.trade_history[counter].quantity
@@ -200,12 +187,27 @@ class PositionSummary:
                             temp = self.remove_trade("buy")
                             self.sell_quantities[0] += temp
                     self.net_position += units
+
             self.collapse_trade()
             self.set_direction()
             self.average_cost = round(self.calc_average_cost(), 4)
             self.net_position = self.calc_total_open_lots()
             self.breakdown.append([date, self.net_position, self.average_cost])
             counter += 1
+
+    def get_summary(self):
+        """
+        Returns a named tuple of the ticker, net position and the average
+        price of the opens lots
+        """
+        Summary = namedtuple(
+            "Summary",
+            ["ticker", "quantity", "average_price"]
+        )
+        ticker = self.ticker
+        quantity = self.net_position
+        average_price = round(self.average_cost, 4)
+        return Summary(ticker, quantity, average_price)
 
 
 class PositionAccounting(PositionSummary):
