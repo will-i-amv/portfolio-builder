@@ -65,9 +65,10 @@ class PositionSummary:
     def get_average_cost(self):
         """Returns the weighted average cost of the positions open lots."""
         open_lots = self.total_open_lots()
+        market_value = self.total_market_value() 
         if open_lots == 0 or not open_lots:
             return 0
-        return abs(self.total_market_value()/self.total_open_lots())
+        return abs(market_value / open_lots)
 
     def remove_trade(self, direction):
         if direction == "buy":
@@ -78,8 +79,6 @@ class PositionSummary:
             popped_quantity = self.sell_quantities.popleft()
             self.sell_prices.popleft()
             self.sell_dates.popleft()
-        else:
-            raise NameError("why did this happen")
         return popped_quantity
 
     def _collapse_trade(self):
