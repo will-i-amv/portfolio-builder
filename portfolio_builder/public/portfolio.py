@@ -287,28 +287,8 @@ class PortfolioSummary:
     the latest market prices
     """
 
-    def __init__(self):
-        self.portfolio_breakdown = pd.DataFrame()
-
-    def add_position(self, close_prices, trade_history):
-        """
-        Adds each positions daily market value to the portfolio breakdown.
-        """
-        Position = PositionAccounting(close_prices, trade_history)
-        Position_valuation = Position.daily_valuations()
-        if self.portfolio_breakdown.empty:
-            self.portfolio_breakdown = Position_valuation
-        else:
-            self.portfolio_breakdown = (
-                self
-                .portfolio_breakdown
-                .join(Position_valuation)
-            )
-        self.portfolio_breakdown = (
-            self
-            .portfolio_breakdown
-            .fillna(method="ffill")
-        )
+    def __init__(self, df):
+        self.portfolio_breakdown = df
 
     def net_valuations(self):
         """

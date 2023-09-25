@@ -1,9 +1,14 @@
+import pandas as pd
 from flask_login import current_user
 from sqlalchemy.sql import func
 
 from portfolio_builder import db
-from portfolio_builder.public.models import Watchlist, WatchlistItem, Price, Security
-from portfolio_builder.public.portfolio import PositionSummary, PortfolioSummary
+from portfolio_builder.public.models import (
+    Watchlist, WatchlistItem, Price, Security
+)
+from portfolio_builder.public.portfolio import (
+    PositionSummary, PortfolioSummary, PositionAccounting
+)
 
 
 def get_prices(ticker):
@@ -93,10 +98,16 @@ def get_position_summary(watchlist_name):
 
 
 def get_portfolio_summary(watchlist_name):
-    Portfolio = PortfolioSummary()
     all_tickers = get_watchlist_tickers(watchlist_name)
+    df = pd.DataFrame()
     for ticker in all_tickers:
         trades = get_trade_history(watchlist_name, ticker)
         prices = get_prices(ticker)
-        Portfolio.add_position(prices, trades)
+        pos_valuation = PositionAccounting(prices, trades).daily_valuations()
+        if df.empty:
+            df = pos_valuation
+        else:
+            df = df.join(pos_valuation)
+        df = df.fillna(method="ffill")
+    Portfolio = PortfolioSummary(df)
     return Portfolio
