@@ -88,12 +88,11 @@ def get_portfolio_flows(watchlist_name):
 
 def get_position_summary(watchlist_name):
     all_tickers = get_watchlist_tickers(watchlist_name)
-    summary_table = []
+    summary_table = {}
     for ticker in all_tickers:
         trade_history = get_trade_history(watchlist_name, ticker)
         summary = PositionSummary(trade_history).get_summary()
-        if summary.quantity != 0:
-            summary_table.append(summary)
+        summary_table[ticker] = summary
     return summary_table
 
 

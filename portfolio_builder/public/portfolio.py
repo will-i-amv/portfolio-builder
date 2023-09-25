@@ -199,14 +199,14 @@ class PositionSummary:
         Returns a named tuple of the ticker, net position and the average
         price of the opens lots
         """
-        Summary = namedtuple(
-            "Summary",
-            ["ticker", "quantity", "average_price"]
+        df = (
+            pd
+            .DataFrame(
+                data=self.breakdown, 
+                columns=['date', 'quantity', 'average_price']
+            )
         )
-        ticker = self.ticker
-        quantity = self.net_position
-        average_price = self.average_cost
-        return Summary(ticker, quantity, average_price)
+        return df
 
 
 class PositionAccounting(PositionSummary):

@@ -75,7 +75,18 @@ def index():
     else:
         curr_watch_name = next(iter(watch_names), '')
     flows = get_portfolio_flows(curr_watch_name)
-    summary = get_position_summary(curr_watch_name)
+    summaries = get_position_summary(curr_watch_name)
+    summary = [
+        (
+            df
+            .assign(ticker=ticker)
+            .sort_values(by=['date'])
+            .drop(['date'], axis=1)
+            .tail(1)
+            .to_dict('records')[0]
+        ) 
+        for ticker, df in summaries.items()
+    ]
     if len(summary) > 7:
         summary = summary[0:7]
     Portfolio = get_portfolio_summary(curr_watch_name)
