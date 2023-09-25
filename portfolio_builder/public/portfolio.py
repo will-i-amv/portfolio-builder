@@ -14,17 +14,17 @@ class PositionSummary:
 
     def __init__(self, trade_history):
         self.trade_history = trade_history
-        self.average_cost = None
-        self.ticker = self.set_ticker()
         self.buy_quantities = deque([])
         self.buy_prices = deque([])
         self.buy_dates = deque([])
         self.sell_quantities = deque([])
         self.sell_prices = deque([])
         self.sell_dates = deque([])
-        self.open_direction = None
         self.breakdown = []
+        self.open_direction = ''
         self.net_position = 0
+        self.average_cost = 0
+        self.ticker = self.set_ticker()
         self.calc_fifo()
 
     def __repr__(self):
@@ -52,18 +52,18 @@ class PositionSummary:
         elif self.open_direction == "short":
             return sum(self.sell_quantities)
         else:
-            return None
+            return 0
 
     def calc_total_market_value(self):
         """Returns the position's market value"""
-        total = None
+        total = 0
         if self.buy_quantities and self.open_direction == "long":
             zipped = zip(self.buy_quantities, self.buy_prices)
             total = (quantity*price for quantity, price in zipped)
         elif self.sell_quantities and self.open_direction == "short":
             zipped = zip(self.sell_quantities, self.sell_prices)
             total = (quantity*price for quantity, price in zipped)
-        return sum(total) if total is not None else None
+        return sum(total) if total != 0 else 0
 
     def calc_average_cost(self):
         """Returns the weighted average cost of the positions open lots."""
@@ -71,7 +71,8 @@ class PositionSummary:
         market_value = self.calc_total_market_value() 
         if open_lots == 0 or not open_lots:
             return 0
-        return abs(market_value / open_lots)
+        average_cost = abs(market_value / open_lots)
+        return round(average_cost, 4)
 
     def set_direction(self):
         """
@@ -82,22 +83,6 @@ class PositionSummary:
             self.open_direction = "long"
         elif self.open_direction == "long" and self.net_position < 0:
             self.open_direction = "short"
-
-    def set_initial_trade(self):
-        units = self.trade_history[0].quantity
-        price = self.trade_history[0].price
-        # date = self.trade_history[0].trade_date
-        date = self.trade_history[0].date
-        if units >= 0:
-            self.open_direction = "long"
-            self.add_trade("buy", units, price, date)
-
-        else:
-            self.open_direction = "short"
-            self.add_trade("sell", units, price, date)
-        self.average_cost = self.calc_average_cost()
-        self.net_position = self.calc_total_open_lots()
-        self.breakdown.append([date, self.net_position, self.average_cost])
 
     def add_trade(self, side, units, price, date):
         if side == "buy":
@@ -119,6 +104,22 @@ class PositionSummary:
             self.sell_prices.popleft()
             self.sell_dates.popleft()
         return popped_quantity
+
+    def set_initial_trade(self):
+        units = self.trade_history[0].quantity
+        price = self.trade_history[0].price
+        # date = self.trade_history[0].trade_date
+        date = self.trade_history[0].date
+        if units >= 0:
+            self.open_direction = "long"
+            self.add_trade("buy", units, price, date)
+
+        else:
+            self.open_direction = "short"
+            self.add_trade("sell", units, price, date)
+        self.average_cost = self.calc_average_cost()
+        self.net_position = self.calc_total_open_lots()
+        self.breakdown.append([date, self.net_position, self.average_cost])
 
     def collapse_trade(self):
         if self.sell_quantities:
@@ -174,8 +175,7 @@ class PositionSummary:
                             self.sell_quantities[0] += self.buy_quantities[0]
                             self.remove_trade("buy")
                         else:
-                            temp = self.remove_trade("sell")
-                            self.buy_quantities[0] += temp
+                            self.buy_quantities[0] += self.remove_trade("sell")
                     self.net_position += units 
                 else:
                     self.add_trade("buy", units, price, date)
@@ -184,13 +184,12 @@ class PositionSummary:
                             self.buy_quantities[0] += self.sell_quantities[0]
                             self.remove_trade("sell")
                         else:
-                            temp = self.remove_trade("buy")
-                            self.sell_quantities[0] += temp
+                            self.sell_quantities[0] += self.remove_trade("buy")
                     self.net_position += units
 
             self.collapse_trade()
             self.set_direction()
-            self.average_cost = round(self.calc_average_cost(), 4)
+            self.average_cost = self.calc_average_cost()
             self.net_position = self.calc_total_open_lots()
             self.breakdown.append([date, self.net_position, self.average_cost])
             counter += 1
@@ -206,7 +205,7 @@ class PositionSummary:
         )
         ticker = self.ticker
         quantity = self.net_position
-        average_price = round(self.average_cost, 4)
+        average_price = self.average_cost
         return Summary(ticker, quantity, average_price)
 
 
