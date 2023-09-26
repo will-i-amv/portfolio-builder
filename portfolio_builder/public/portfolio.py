@@ -268,18 +268,17 @@ class PortfolioSummary:
         accurate calculation of the HPR which can be distorted as purchases and
         sells are added to the trades.
         """
-        df_flows = pd.DataFrame(flows, columns=["date", "flows"])
-        df_flows["cash"] = float("nan")
-        df_flows["inflows"] = float("nan")
-        df_flows["date"] = df_flows["date"].astype(str)
-        df_flows["cash"] = df_flows.loc[df_flows['flows'] > 0, "flows"]
-        df_flows["inflows"] = df_flows.loc[df_flows['flows'] <= 0, "flows"]
-        df_flows["cash"] = df_flows["cash"].cumsum()
-        df_flows["inflows"] = df_flows["inflows"].abs()
-        df_flows = df_flows.set_index("date")  # need to sum groupby date
-        df_flows = df_flows.groupby([df_flows.index]).sum()
-        df_flows = df_flows.drop(columns=['flows'])
-        df_flows = df_flows.replace({'cash': 0, 'inflows': 0}, float("nan"))
+        df_flows = (
+            pd
+            .DataFrame(flows, columns=["date", "flows"])
+            .astype({'date': 'str'})
+            .assign(
+                cash=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
+                inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
+            )
+            .set_index("date")
+            .drop(columns=['flows'])
+        )
         return df_flows
 
     def generate_hpr(self, flows):
