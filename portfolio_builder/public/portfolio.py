@@ -1,5 +1,5 @@
 import pandas as pd
-from collections import deque, namedtuple
+from collections import deque
 
 
 class PositionSummary:
@@ -209,63 +209,49 @@ class PositionSummary:
         return df
 
 
-class PositionAccounting(PositionSummary):
+def calc_daily_valuations(ticker, prices, summaries):
     """
-    Inherits from the Position Summary and applies accounting methods
-    to a Position
+    Combines the position breakdown with the daily prices to calculate
+    daily market value. The Daily market value is the positions quantity
+    multiplied by the market price.
     """
-
-    def __init__(self, close_prices, trade_history):
-        super().__init__(trade_history)
-        self.close_prices = close_prices  # Daily market prices
-
-    def calc_daily_valuations(self):
-        """
-        Combines the position breakdown with the daily prices to calculate
-        daily market value. The Daily market value is the positions quantity
-        multiplied by the market price.
-        """
-        df_summaries = (
-            pd
-            .DataFrame(
-                data=self.breakdown, 
-                columns=['date', 'quantity', 'average_price']
-            )
-            .astype({
-                # 'date': 'datetime64[ns]', 
-                'date': 'str', 
-                'quantity': 'float64', 
-                'average_price': 'float64',
-            })
+    df_summaries = (
+        summaries
+        .astype({
+            # 'date': 'datetime64[ns]', 
+            'date': 'str', 
+            'quantity': 'float64', 
+            'average_price': 'float64',
+        })
+    )
+    df_prices = (
+        pd
+        .DataFrame(
+            data=prices, 
+            columns=["date", "price"]
         )
-        df_prices = (
-            pd
-            .DataFrame(
-                data=self.close_prices, 
-                columns=["date", "price"]
-            )
-            .astype({
-                # 'date': 'datetime64[ns]', 
-                'date': 'str', 
-                'price': 'float64'
-            })
-        )
-        df_cleaned = (
-            pd
-            .merge(df_prices, df_summaries, on=['date'], how='left')
-            .astype({
-                'quantity': 'float64', 
-                'price': 'float64',
-            })
-            .fillna(method='ffill')
-            .assign(market_val=lambda x: x['quantity'] * x['price'])
-            .round({'market_val': 3})
-            .loc[:, ['date', 'market_val']]
-            .rename(columns={'market_val': f'market_val_{self.ticker}'})
-            .set_index('date')
-            .dropna()
-        )
-        return df_cleaned
+        .astype({
+            # 'date': 'datetime64[ns]', 
+            'date': 'str', 
+            'price': 'float64'
+        })
+    )
+    df_cleaned = (
+        pd
+        .merge(df_prices, df_summaries, on=['date'], how='left')
+        .astype({
+            'quantity': 'float64', 
+            'price': 'float64',
+        })
+        .fillna(method='ffill')
+        .assign(market_val=lambda x: x['quantity'] * x['price'])
+        .round({'market_val': 3})
+        .loc[:, ['date', 'market_val']]
+        .rename(columns={'market_val': f'market_val_{ticker}'})
+        .set_index('date')
+        .dropna()
+    )
+    return df_cleaned
 
 
 class PortfolioSummary:

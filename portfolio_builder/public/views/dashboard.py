@@ -89,7 +89,7 @@ def index():
     ]
     if len(summary) > 7:
         summary = summary[0:7]
-    Portfolio = get_portfolio_summary(curr_watch_name)
+    Portfolio = get_portfolio_summary(summaries)
     portfolio_breakdown = Portfolio.portfolio_breakdown
     hpr = Portfolio.generate_hpr(flows)
     content = {

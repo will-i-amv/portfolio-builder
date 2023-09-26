@@ -7,7 +7,7 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Price, Security
 )
 from portfolio_builder.public.portfolio import (
-    PositionSummary, PortfolioSummary, PositionAccounting
+    PositionSummary, PortfolioSummary, calc_daily_valuations
 )
 
 
@@ -96,13 +96,11 @@ def get_position_summary(watchlist_name):
     return summary_table
 
 
-def get_portfolio_summary(watchlist_name):
-    all_tickers = get_watchlist_tickers(watchlist_name)
+def get_portfolio_summary(all_summaries):
     df = pd.DataFrame()
-    for ticker in all_tickers:
-        trades = get_trade_history(watchlist_name, ticker)
+    for ticker, summaries in all_summaries.items():
         prices = get_prices(ticker)
-        pos_valuation = PositionAccounting(prices, trades).calc_daily_valuations()
+        pos_valuation = calc_daily_valuations(ticker, prices, summaries)
         if df.empty:
             df = pos_valuation
         else:
