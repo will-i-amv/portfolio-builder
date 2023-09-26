@@ -12,39 +12,52 @@ from portfolio_builder.public.utils import (
 bp = Blueprint('dashboard', __name__)
 
 
-def get_pie_chart(portfolio_valuation):
+def get_pie_chart(df_portfolio):
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
     positions the next n positons are aggregated to and classified
-    'as other'
+    as 'Other'
     """
-    df = portfolio_valuation.tail(1)
-    df = df.T.reset_index()  # transpose table to make the tickers the rows
-    if df.empty:
-        return df
-    new_headers = {df.columns[0]: "ticker", df.columns[1]: "Market_val"}
-    df = df.rename(columns=new_headers)
-    df["Market_val"] = abs(df["Market_val"])
-    total_portfolio_val = sum(df["Market_val"])
-    df["ticker"] = df["ticker"].replace("market_val_", "", regex=True)
-    df["market_val_perc"] = round(df["Market_val"]/total_portfolio_val, 2)
-    df = df[df["Market_val"] != 0]  # filter rows where valuation isnt zero
-    df = df.sort_values(by=['market_val_perc'], ascending=False)
-    if len(df) >= 7:
-        # split the dataframe into two parts
-        df_bottom = df.tail(len(df)-6)
-        df = df.head(6)
-        # sum the bottom dataframe to create an "Other" field
-        df_bottom.loc['Other'] = df_bottom.sum(numeric_only=True, axis=0)
-        df_bottom.at["Other", "ticker"] = "Other"
-        df_bottom = df_bottom.tail(1)
-        df_final = pd.concat([df, df_bottom])
-        df_final = list(df_final.itertuples(index=False))
-        return df_final
+    df_initial = (
+        df_portfolio
+        .tail(1)
+        .T
+        .reset_index()
+    )
+    df_initial.columns = ['ticker', 'Market_val']
+    df_temp = (
+        df_initial
+        .assign(Market_val=lambda x: x["Market_val"].abs())
+        .replace({'ticker': {'market_val_': ''}}, regex=True)
+        .assign(
+            market_val_perc=lambda x: 
+                (x["Market_val"]  / x["Market_val"].sum()) * 100
+        )
+        .round({'market_val_perc': 2})
+        .loc[lambda x: x["Market_val"] != 0.0]
+        .sort_values(by=['market_val_perc'], ascending=False)
+    )
+    max_len = 6
+    df_len = df_temp.shape[0] 
+    if df_len < max_len:
+        return list(df_temp.itertuples(index=False))
     else:
-        df_final = list(df.itertuples(index=False))
-        return df_final
+        df_top = df_temp.head(max_len)
+        df_bottom = (
+            df_temp
+            .tail(df_len - max_len)
+            .pivot_table(
+                index='ticker',
+                margins=True,
+                margins_name='Other', # defaults to 'All'
+                aggfunc='sum'
+            )
+            .reset_index()
+            .tail(1)
+        )
+        df_final = pd.concat([df_top, df_bottom])
+        return list(df_final.itertuples(index=False))
 
 
 def get_bar_chart(portfolio_valuation):
