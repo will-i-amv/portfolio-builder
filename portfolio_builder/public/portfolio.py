@@ -268,6 +268,8 @@ class PortfolioSummary:
                 inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
             )
             .set_index("date")
+            .assign(cash=lambda x: x['cash'].ffill())
+            .fillna(0)
             .drop(columns=['flows'])
         )
         return df_flows
@@ -284,24 +286,33 @@ class PortfolioSummary:
         Returns a named tuple of daily HPR % changes.
         """
         df_flows = self.convert_flows(flows)
-        valuation = self.portfolio_breakdown.copy()
-        valuation["portfolio_val"] = valuation.sum(axis=1)
-        valuation = valuation[["portfolio_val"]]
-        valuation = valuation.join(df_flows)
-        valuation["cash"] = valuation["cash"].fillna(method="ffill")
-        valuation = valuation.fillna(value=0)
-        valuation["total_portfolio_val"] = (
-            valuation["portfolio_val"] +
-            valuation["cash"]
+        df_valuation =( 
+            self.portfolio_breakdown
+            .assign(portfolio_val=lambda x: x.sum(axis=1))
+            .loc[:, ['portfolio_val']]
         )
-        valuation["portfolio_val"] = valuation["total_portfolio_val"].shift(1)
-        valuation["pct_change"] = (
-            (
-                (valuation["total_portfolio_val"]) /
-                (valuation["portfolio_val"] + valuation["inflows"])
-            ) - 1
-        ) * 100
-        valuation["pct_change"] = round(valuation["pct_change"], 3)
-        valuation = valuation.reset_index()
-        valuation = list(valuation.itertuples(index=False))
-        return valuation
+        df = (
+            pd
+            .merge(df_valuation, df_flows, left_index=True, right_index=True, how='left')
+            .assign(cash=lambda x: x['cash'].ffill())
+            .fillna(0)
+            .assign(
+                total_portfolio_val=lambda x: x["portfolio_val"] + x["cash"]
+            )
+            .assign(
+                total_portfolio_val_prev=lambda x: x['total_portfolio_val'].shift(1)
+            )
+            .assign(
+                pct_change=lambda x: (
+                    (
+                        x["total_portfolio_val"] / 
+                        (x["total_portfolio_val_prev"] + x["inflows"])
+                    ) - 1
+                ) * 100
+            )
+            .round({'pct_change': 3})
+            .fillna({'pct_change': 0.0})
+            .loc[:, ['pct_change']]
+            .reset_index()
+        )
+        return list(df.itertuples(index=False))
