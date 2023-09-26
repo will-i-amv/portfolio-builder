@@ -219,66 +219,53 @@ class PositionAccounting(PositionSummary):
         super().__init__(trade_history)
         self.close_prices = close_prices  # Daily market prices
 
-    def performance_table(self):
-        """
-        Combines the position breakdown with the daily prices to calculate
-        daily unrealised P&L. The Daily unrealised P&L is the difference
-        between the postion's weighted average cost and the market
-        price.
-        """
-        df = pd.DataFrame(self.close_prices, columns=["date", "price"])
-        df = df.set_index("date")
-        df["quantity"] = float("nan")
-        df["avg_cost"] = float("nan")
-        start_date = str(self.breakdown[0][0])
-        df2 = df.loc[start_date:]
-        df2 = df2.copy()  # copied to prevent chained assignment
-        for row in self.breakdown:
-            df2.at[str(row[0]), "quantity"] = row[1]
-            df2.at[str(row[0]), "avg_cost"] = row[2]
-        df2["quantity"] = df2["quantity"].fillna(method="ffill")
-        df2["price"] = df2["price"].fillna(method="ffill")
-        df2["avg_cost"] = df2["avg_cost"].fillna(method="ffill")
-        df2["price"] = pd.to_numeric(df2["price"])
-        df2.loc[df2['quantity'] <= 0, 'Long/Short'] = -1
-        df2.loc[df2['quantity'] > 0, 'Long/Short'] = 1
-        df2["pct_change"] = 100 * (
-            ((df2["price"] - df2["avg_cost"]) / df2["avg_cost"]) *
-            df2["Long/Short"]
-        )
-        df2["pct_change"] = round(df2["pct_change"], 3)
-        df2 = df2.reset_index()
-        df2 = df2[["date", "quantity", "avg_cost", "price", "pct_change"]]
-        df2 = list(df2.itertuples(index=False))
-        return df2
-
-    def daily_valuations(self):
+    def calc_daily_valuations(self):
         """
         Combines the position breakdown with the daily prices to calculate
         daily market value. The Daily market value is the positions quantity
         multiplied by the market price.
         """
-        df = pd.DataFrame(self.close_prices, columns=["date", "price"])
-        df = df.set_index("date")
-        df["quantity"] = float("nan")
-        df["market_val"] = float("nan")
-        # the prices starting from the first date the security was held
-        # start_date = str(self.breakdown[0][0])
-        start_date = self.breakdown[0][0]
-        df2 = df.loc[start_date:]
-        df2 = df2.copy()  # copied to prevent chained assignment
-        # update the quantity at each date
-        for row in self.breakdown:
-            df2.at[str(row[0]), "quantity"] = row[1]
-        df2["price"] = df2["price"].fillna(method="ffill")
-        df2["quantity"] = df2["quantity"].fillna(method="ffill")
-        df2["price"] = pd.to_numeric(df2["price"])
-        df2["market_val"] = round((df2["price"] * df2["quantity"]), 3)
-        df2 = df2[["market_val"]]
-        new_name = f"market_val_{self.ticker}"
-        new_header = {"market_val": new_name}
-        df2 = df2.rename(columns=new_header)
-        return df2
+        df_summaries = (
+            pd
+            .DataFrame(
+                data=self.breakdown, 
+                columns=['date', 'quantity', 'average_price']
+            )
+            .astype({
+                # 'date': 'datetime64[ns]', 
+                'date': 'str', 
+                'quantity': 'float64', 
+                'average_price': 'float64',
+            })
+        )
+        df_prices = (
+            pd
+            .DataFrame(
+                data=self.close_prices, 
+                columns=["date", "price"]
+            )
+            .astype({
+                # 'date': 'datetime64[ns]', 
+                'date': 'str', 
+                'price': 'float64'
+            })
+        )
+        df_cleaned = (
+            pd
+            .merge(df_prices, df_summaries, on=['date'], how='left')
+            .astype({
+                'quantity': 'float64', 
+                'price': 'float64',
+            })
+            .fillna(method='ffill')
+            .assign(market_val=lambda x: x['quantity'] * x['price'])
+            .round({'market_val': 3})
+            .loc[:, ['date', 'market_val']]
+            .rename(columns={'market_val': f'market_val_{self.ticker}'})
+            .set_index('date')
+            .dropna()
+        )
+        return df_cleaned
 
 
 class PortfolioSummary:

@@ -102,7 +102,7 @@ def get_portfolio_summary(watchlist_name):
     for ticker in all_tickers:
         trades = get_trade_history(watchlist_name, ticker)
         prices = get_prices(ticker)
-        pos_valuation = PositionAccounting(prices, trades).daily_valuations()
+        pos_valuation = PositionAccounting(prices, trades).calc_daily_valuations()
         if df.empty:
             df = pos_valuation
         else:
