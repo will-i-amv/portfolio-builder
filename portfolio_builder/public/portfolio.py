@@ -249,15 +249,6 @@ class PortfolioSummary:
     def __init__(self, df):
         self.portfolio_breakdown = df
 
-    def net_valuations(self):
-        """
-        returns the portfolios daily market value
-        """
-        valuation = self.portfolio_breakdown.copy()
-        valuation["portfolio_val"] = valuation.sum(axis=1)
-        valuation = valuation[["portfolio_val"]]
-        return valuation
-
     def convert_flows(self, flows):
         """
         Using the Holding Period Return (HPR) methodology. Purchases of
@@ -293,7 +284,9 @@ class PortfolioSummary:
         Returns a named tuple of daily HPR % changes.
         """
         df_flows = self.convert_flows(flows)
-        valuation = self.net_valuations()
+        valuation = self.portfolio_breakdown.copy()
+        valuation["portfolio_val"] = valuation.sum(axis=1)
+        valuation = valuation[["portfolio_val"]]
         valuation = valuation.join(df_flows)
         valuation["cash"] = valuation["cash"].fillna(method="ffill")
         valuation = valuation.fillna(value=0)
