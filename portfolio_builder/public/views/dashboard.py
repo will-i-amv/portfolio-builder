@@ -19,6 +19,8 @@ def get_pie_chart(df_portfolio):
     positions the next n positons are aggregated to and classified
     as 'Other'
     """
+    if df_portfolio.empty:
+        return list(df_portfolio.itertuples(index=False))
     df_initial = (
         df_portfolio
         .tail(1)
@@ -60,24 +62,28 @@ def get_pie_chart(df_portfolio):
         return list(df_final.itertuples(index=False))
 
 
-def get_bar_chart(portfolio_valuation):
+def get_bar_chart(df_portfolio):
     """
     Returns a named tuple of the 5 largest positions by absolute exposure
     in descending order
     """
-    df = portfolio_valuation.tail(1)
-    df = df.T.reset_index()
-    if df.empty:
-        return df
-    new_headers = {df.columns[0]: "ticker", df.columns[1]: "market_val"}
-    df = df.rename(columns=new_headers)
-    df["ticker"] = df["ticker"].replace("market_val_", "", regex=True)
-    # sort the dataframe by largest exposures (descending order)
-    df = df.iloc[df['market_val'].abs().argsort()]
-    df = df[df["market_val"] != 0]  # filter rows where valuation isnt zero
-    df = df.tail(5)  # the 5 largest positions by absolute mv
-    df_final = list(df.itertuples(index=False))
-    return df_final
+    if df_portfolio.empty:
+        return list(df_portfolio.itertuples(index=False))
+    df_initial = (
+        df_portfolio
+        .tail(1)
+        .T
+        .reset_index()
+    )
+    df_initial.columns = ['ticker', 'market_val']
+    df_final = (
+        df_initial
+        .replace({'ticker': {'market_val_': ''}}, regex=True)
+        .sort_values(by=['market_val'], ascending=False)
+        .loc[lambda x: x["market_val"] != 0.0]
+        .tail(5)
+    )
+    return list(df_final.itertuples(index=False))
 
 
 @bp.route('/', methods=['GET', 'POST'])
