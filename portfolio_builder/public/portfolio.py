@@ -240,79 +240,71 @@ def calc_daily_valuations(ticker, prices, summaries):
     return df_cleaned
 
 
-class PortfolioSummary:
+def convert_flows(flows):
     """
-    This is a collection of the Positions for the user accounts, priced as of
-    the latest market prices
+    Using the Holding Period Return (HPR) methodology. Purchases of
+    securities are accounted as fund inflows and the sale of securities are
+    accounted as increases in cash.
+
+    By creating the cumulative sum of these values we can maintain an
+    accurate calculation of the HPR which can be distorted as purchases and
+    sells are added to the trades.
     """
-
-    def __init__(self, df):
-        self.portfolio_breakdown = df
-
-    def convert_flows(self, flows):
-        """
-        Using the Holding Period Return (HPR) methodology. Purchases of
-        securities are accounted as fund inflows and the sale of securities are
-        accounted as increases in cash.
-
-        By creating the cumulative sum of these values we can maintain an
-        accurate calculation of the HPR which can be distorted as purchases and
-        sells are added to the trades.
-        """
-        df_flows = (
-            pd
-            .DataFrame(flows, columns=["date", "flows"])
-            .astype({'date': 'str'})
-            .assign(
-                cash=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
-                inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
-            )
-            .set_index("date")
-            .assign(cash=lambda x: x['cash'].ffill())
-            .fillna(0)
-            .drop(columns=['flows'])
+    df_flows = (
+        pd
+        .DataFrame(flows, columns=["date", "flows"])
+        .astype({'date': 'str'})
+        .assign(
+            cash=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
+            inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
         )
-        return df_flows
+        .set_index("date")
+        .assign(cash=lambda x: x['cash'].ffill())
+        .fillna(0)
+        .drop(columns=['flows'])
+    )
+    return df_flows
 
-    def generate_hpr(self, flows):
-        """
-        Where PortVal = Portfolio Value. The Formula for the Daily
-        Holding Period Return (HPR) is calculated as follows:
-        (Ending PortVal) / (Previous PortVal After Cash Flow) – 1.
 
-        1. Add the cash from the sale of securities to the portfolio value.
-        2. shift the total portfolio value column to allow us to easily
-           caclulate the Percentage change before and after each cash flow.
-        Returns a named tuple of daily HPR % changes.
-        """
-        df_flows = self.convert_flows(flows)
-        df_valuation =( 
-            self.portfolio_breakdown
-            .assign(portfolio_val=lambda x: x.sum(axis=1))
-            .loc[:, ['portfolio_val']]
+def generate_hpr(df_summary, flows):
+    """
+    Where PortVal = Portfolio Value. The Formula for the Daily
+    Holding Period Return (HPR) is calculated as follows:
+    (Ending PortVal) / (Previous PortVal After Cash Flow) – 1.
+
+    1. Add the cash from the sale of securities to the portfolio value.
+    2. shift the total portfolio value column to allow us to easily
+        caclulate the Percentage change before and after each cash flow.
+    Returns a named tuple of daily HPR % changes.
+    """
+    df_flows = convert_flows(flows)
+    df_valuation =( 
+        df_summary
+        .assign(portfolio_val=lambda x: x.sum(axis=1))
+        .loc[:, ['portfolio_val']]
+    )
+    df = (
+        pd
+        .merge(df_valuation, df_flows, left_index=True, right_index=True, how='left')
+        .assign(cash=lambda x: x['cash'].ffill())
+        .fillna(0)
+        .assign(
+            total_portfolio_val=lambda x: x["portfolio_val"] + x["cash"]
         )
-        df = (
-            pd
-            .merge(df_valuation, df_flows, left_index=True, right_index=True, how='left')
-            .assign(cash=lambda x: x['cash'].ffill())
-            .fillna(0)
-            .assign(
-                total_portfolio_val=lambda x: x["portfolio_val"] + x["cash"]
-            )
-            .assign(
-                total_portfolio_val_prev=lambda x: x['total_portfolio_val'].shift(1)
-            )
-            .assign(
-                pct_change=lambda x: (
-                    (
-                        x["total_portfolio_val"] / 
-                        (x["total_portfolio_val_prev"] + x["inflows"])
-                    ) - 1
-                ) * 100
-            )
-            .round({'pct_change': 3})
-            .fillna({'pct_change': 0.0})
-            .loc[:, ['pct_change']]
-            .reset_index()
+        .assign(
+            total_portfolio_val_prev=lambda x: x['total_portfolio_val'].shift(1)
         )
-        return list(df.itertuples(index=False))
+        .assign(
+            pct_change=lambda x: (
+                (
+                    x["total_portfolio_val"] / 
+                    (x["total_portfolio_val_prev"] + x["inflows"])
+                ) - 1
+            ) * 100
+        )
+        .round({'pct_change': 3})
+        .fillna({'pct_change': 0.0})
+        .loc[:, ['pct_change']]
+        .reset_index()
+    )
+    return list(df.itertuples(index=False))

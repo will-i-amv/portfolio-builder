@@ -7,7 +7,7 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Price, Security
 )
 from portfolio_builder.public.portfolio import (
-    PortfolioSummary, calc_daily_valuations, PositionSummary
+    calc_daily_valuations, PositionSummary
 )
 
 
@@ -113,5 +113,4 @@ def get_portfolio_summary(all_summaries):
         else:
             df = df.join(pos_valuation)
         df = df.fillna(method="ffill")
-    Portfolio = PortfolioSummary(df)
-    return Portfolio
+    return df

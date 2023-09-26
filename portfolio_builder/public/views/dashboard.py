@@ -3,8 +3,9 @@ from flask import Blueprint, request, render_template
 from flask_login import login_required
 
 from portfolio_builder.public.views.watchlist import get_watchlist_names
+from portfolio_builder.public.portfolio import generate_hpr
 from portfolio_builder.public.utils import (
-    get_position_summary, get_portfolio_flows, get_portfolio_summary
+    get_position_summary, get_portfolio_flows, get_portfolio_summary, 
 )
 
 
@@ -74,7 +75,6 @@ def index():
         curr_watch_name = request.form.get('watchlist_group_selection')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    flows = get_portfolio_flows(curr_watch_name)
     summaries = get_position_summary(curr_watch_name)
     summary = [
         (
@@ -89,14 +89,14 @@ def index():
     ]
     if len(summary) > 7:
         summary = summary[0:7]
-    Portfolio = get_portfolio_summary(summaries)
-    portfolio_breakdown = Portfolio.portfolio_breakdown
-    hpr = Portfolio.generate_hpr(flows)
+    flows = get_portfolio_flows(curr_watch_name)
+    portfolio = get_portfolio_summary(summaries)
+    portfolio_hpr = generate_hpr(portfolio, flows)
     content = {
         'summary': summary, 
-        'line_chart': hpr,
-        'pie_chart': get_pie_chart(portfolio_breakdown), 
-        'bar_chart': get_bar_chart(portfolio_breakdown),
+        'line_chart': portfolio_hpr,
+        'pie_chart': get_pie_chart(portfolio), 
+        'bar_chart': get_bar_chart(portfolio),
         'watch_names': watch_names, 
         'curr_watch_name': curr_watch_name
     }
