@@ -2,7 +2,7 @@ import pandas as pd
 from collections import deque
 
 
-class PositionSummary:
+class FifoAccounting:
     """
     Takes the trade history for a user's watchlist from the database and it's
     ticker. Then applies the FIFO accounting methodology to calculate the
