@@ -7,7 +7,7 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Price, Security
 )
 from portfolio_builder.public.portfolio import (
-    PositionSummary, PortfolioSummary, calc_daily_valuations
+    PortfolioSummary, calc_daily_valuations, PositionSummary
 )
 
 
@@ -91,8 +91,15 @@ def get_position_summary(watchlist_name):
     summary_table = {}
     for ticker in all_tickers:
         trade_history = get_trade_history(watchlist_name, ticker)
-        summary = PositionSummary(trade_history).get_summary()
-        summary_table[ticker] = summary
+        fifo_accounting = PositionSummary(trade_history)
+        df_summary = (
+            pd
+            .DataFrame(
+                data=fifo_accounting.breakdown, 
+                columns=['date', 'quantity', 'average_price']
+            )
+        )
+        summary_table[ticker] = df_summary
     return summary_table
 
 

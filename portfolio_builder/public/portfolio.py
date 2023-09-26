@@ -194,20 +194,6 @@ class PositionSummary:
             self.breakdown.append([date, self.net_position, self.average_cost])
             counter += 1
 
-    def get_summary(self):
-        """
-        Returns a named tuple of the ticker, net position and the average
-        price of the opens lots
-        """
-        df = (
-            pd
-            .DataFrame(
-                data=self.breakdown, 
-                columns=['date', 'quantity', 'average_price']
-            )
-        )
-        return df
-
 
 def calc_daily_valuations(ticker, prices, summaries):
     """
