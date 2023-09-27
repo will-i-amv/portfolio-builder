@@ -176,7 +176,7 @@ def add():
         db.session.add(item)
         db.session.commit()
         check_prices(item.ticker)
-        flash(f"The item '{item.ticker}' has been added to the watchlist.")
+        flash(f"The ticker '{item.ticker}' has been added to the watchlist.")
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
@@ -225,7 +225,7 @@ def update(watch_name, ticker):
             )
             db.session.add_all([last_item, new_item])
             db.session.commit()
-            flash(f"The item '{new_item.ticker}' has been updated.")
+            flash(f"The ticker '{new_item.ticker}' has been updated.")
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
@@ -244,5 +244,5 @@ def delete(watch_name, ticker):
         for item in items:
             db.session.delete(item)
             db.session.commit()
-        flash(f"The item '{item.ticker}' has been deleted from the watchlist.")
+        flash(f"The ticker '{item.ticker}' has been deleted from the watchlist.")
     return redirect(url_for('watchlist.index'))
