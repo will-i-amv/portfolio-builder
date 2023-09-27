@@ -1,5 +1,7 @@
 import datetime as dt
 
+from sqlalchemy.sql import expression
+
 from portfolio_builder import db
 
 
@@ -87,6 +89,7 @@ class WatchlistItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     sector = db.Column(db.String(100), nullable=False)
     trade_date = db.Column(db.DateTime, default=get_default_date)
+    is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     comments = db.Column(db.String(140))
     watchlist_id = db.Column(
