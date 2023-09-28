@@ -268,12 +268,12 @@ def index():
     df_portf_val = get_portf_valuations(portf_pos)
     portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
-    content = {
-        'summary': get_last_portf_position(portf_pos), 
-        'line_chart': calc_portf_hpr(df_portf_val, df_portf_flows),
-        'pie_chart': get_pie_chart(df_portf_val), 
-        'bar_chart': get_bar_chart(df_portf_val),
-        'watch_names': watch_names, 
-        'curr_watch_name': curr_watch_name
-    }
-    return render_template('public/dashboard.html', **content)
+    return render_template(
+        'public/dashboard.html',
+        summary=get_last_portf_position(portf_pos), 
+        line_chart=calc_portf_hpr(df_portf_val, df_portf_flows),
+        pie_chart=get_pie_chart(df_portf_val), 
+        bar_chart=get_bar_chart(df_portf_val),
+        watch_names=watch_names, 
+        curr_watch_name=curr_watch_name,
+    )
