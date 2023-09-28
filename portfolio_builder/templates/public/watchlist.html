@@ -62,7 +62,6 @@
                                 {{ render_field(add_item_form.quantity) }}
                                 {{ render_field(add_item_form.price) }}
                                 {{ render_field(add_item_form.trade_date) }}
-                                {{ render_field(add_item_form.sector) }}
                                 {{ render_field(add_item_form.comments) }}</dl>
                             <p>{{ add_item_form.submit() }}</p>
                             {{ add_item_form.csrf_token }}
@@ -157,7 +156,6 @@
                     <th>Ticker</th>
                     <th>Quantity</th>
                     <th>Price</th>
-                    <th>Sector</th>
                     <th>Trade Date</th>
                     <th>Comments</th>
                     <th>Actions</th>
@@ -170,8 +168,7 @@
                         <td class="c2">{{ item.ticker }}</td>
                         <td class="c3">{{ item.quantity }}</td>
                         <td class="c4">{{ item.price }}</td>
-                        <td class="c5">{{ item.sector }}</td>
-                        <td class="c6">{{ item.trade_date.strftime('%d-%m-%Y') }}</td>
+                        <td class="c5">{{ item.trade_date.strftime('%d-%m-%Y') }}</td>
                         <td>{{ item.comments }}</td>
                         <td class="edit-trade">
                             <button type="button" class="btn-new-wl" data-toggle="modal" data-target="#mymodal2{{ item.id }}">Edit</button>
@@ -188,7 +185,6 @@
                                                     {{ render_field(add_item_form.quantity, value = item.quantity) }}
                                                     {{ render_field(add_item_form.price, value = item.price) }}
                                                     {{ render_field(add_item_form.trade_date, value = item.trade_date.strftime('%Y-%m-%d %H:%M:%S')) }}
-                                                    {{ render_field(add_item_form.sector, value = item.sector) }}
                                                     {{ render_field(add_item_form.comments, default = item.comments) }}</dl>
                                                 {{ add_item_form.csrf_token }}
                                                 <button type="submit" name="button" class="btn btn-primary">Save Changes</button>

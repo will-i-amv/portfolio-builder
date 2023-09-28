@@ -60,10 +60,6 @@ class AddItemForm(FlaskForm):
         ]
     )
     trade_date = DateTimeField("Trade Date", default=get_default_date)
-    sector = StringField(
-        "Sector",
-        validators=[v.InputRequired()]
-    )
     comments = TextAreaField(
         "Comments",
         validators=[v.Optional(), v.Length(max=140)]

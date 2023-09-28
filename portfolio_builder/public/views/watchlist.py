@@ -143,7 +143,6 @@ def add():
             ticker=add_item_form.ticker.data, 
             quantity=add_item_form.quantity.data,
             price=add_item_form.price.data, 
-            sector=add_item_form.sector.data,
             trade_date=add_item_form.trade_date.data,
             comments=add_item_form.comments.data, 
             watchlist_id=watchlist.id
@@ -193,7 +192,6 @@ def update(watch_name, ticker):
                 ticker=add_item_form.ticker.data, 
                 quantity=add_item_form.quantity.data,
                 price=add_item_form.price.data, 
-                sector=add_item_form.sector.data,
                 trade_date=add_item_form.trade_date.data,
                 comments=add_item_form.comments.data,
                 watchlist_id=watchlist.id
