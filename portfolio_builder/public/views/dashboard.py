@@ -239,19 +239,7 @@ def get_bar_chart(df_portf_val):
     return list(df_final.itertuples(index=False))
 
 
-@bp.route('/', methods=['GET', 'POST'])
-@login_required
-def index():
-    watch_names = get_all_watch_names()
-    if request.method == 'POST':
-        curr_watch_name = request.form.get('watchlist_group_selection')
-    else:
-        curr_watch_name = next(iter(watch_names), '')
-    portf_pos = get_portf_positions(curr_watch_name)
-    df_portf_val = get_portf_valuations(portf_pos)
-    portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
-    df_portf_flows = calc_portf_flows_adjusted(portf_flows)
-    portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows)
+def get_last_portf_position(portf_pos):
     last_portf_pos = [
         (
             df_positions
@@ -264,10 +252,25 @@ def index():
         for ticker, df_positions in portf_pos.items()
     ]
     if len(last_portf_pos) > 7:
-        last_portf_pos = last_portf_pos[0:7]
+        return last_portf_pos[0:7]
+    return last_portf_pos
+
+
+@bp.route('/', methods=['GET', 'POST'])
+@login_required
+def index():
+    watch_names = get_all_watch_names()
+    if request.method == 'POST':
+        curr_watch_name = request.form.get('watchlist_group_selection')
+    else:
+        curr_watch_name = next(iter(watch_names), '')
+    portf_pos = get_portf_positions(curr_watch_name)
+    df_portf_val = get_portf_valuations(portf_pos)
+    portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
+    df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     content = {
-        'summary': last_portf_pos, 
-        'line_chart': portf_hpr,
+        'summary': get_last_portf_position(portf_pos), 
+        'line_chart': calc_portf_hpr(df_portf_val, df_portf_flows),
         'pie_chart': get_pie_chart(df_portf_val), 
         'bar_chart': get_bar_chart(df_portf_val),
         'watch_names': watch_names, 
