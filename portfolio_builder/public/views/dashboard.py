@@ -240,17 +240,17 @@ def get_bar_chart(df_portf_val):
 
 
 def get_last_portf_position(portf_pos):
-    last_portf_pos = [
-        (
+    last_portf_pos = []
+    for ticker, df_positions in portf_pos.items():
+        last_pos = list(
             df_positions
             .assign(ticker=ticker)
             .sort_values(by=['date'])
             .drop(['date'], axis=1)
             .tail(1)
-            .to_dict('records')[0]
-        ) 
-        for ticker, df_positions in portf_pos.items()
-    ]
+            .itertuples(index=False)
+        )
+        last_portf_pos.append(*last_pos)
     if len(last_portf_pos) > 7:
         return last_portf_pos[0:7]
     return last_portf_pos
