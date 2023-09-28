@@ -1,6 +1,7 @@
 import datetime as dt
 
-from sqlalchemy.sql import expression
+from flask_login import current_user
+from sqlalchemy.sql import expression, func
 
 from portfolio_builder import db
 
@@ -100,3 +101,106 @@ class WatchlistItem(db.Model):
 
     def __repr__(self):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
+
+
+def get_prices(ticker):
+    prices = (
+        db
+        .session
+        .query(Price)
+        .join(Security, onclause=(Price.ticker_id==Security.id))
+        .filter(Security.ticker == ticker)
+        .with_entities(Price.date, Price.close_price)
+        .all()
+    )
+    return prices
+
+
+def get_watchlist_names():
+    watchlists = (
+        db
+        .session
+        .query(Watchlist)
+        .with_entities(Watchlist.name)
+        .filter_by(user_id=current_user.id)
+        .order_by(Watchlist.id)
+        .all()
+    )
+    return [item[0] for item in watchlists]
+
+
+def get_watchlist_items(filter_clause):
+    watchlist_items = (
+        db
+        .session
+        .query(WatchlistItem)
+        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+        .filter(
+            Watchlist.user_id == current_user.id,
+            *filter_clause
+        )
+        .all()
+    )
+    return watchlist_items
+
+
+def get_watchlist_tickers(watchlist_name):
+    tickers = (
+        db
+        .session
+        .query(WatchlistItem)
+        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+        .filter(
+            Watchlist.user_id == current_user.id,
+            Watchlist.name == watchlist_name
+        )
+        .with_entities(WatchlistItem.ticker)
+        .distinct(WatchlistItem.ticker)
+        .order_by(WatchlistItem.ticker)
+        .all()
+    )
+    return [item.ticker for item in tickers]
+
+
+def get_trade_history(watchlist_name, ticker):
+    trade_history = (
+        db
+        .session
+        .query(WatchlistItem)
+        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+        .filter(
+            Watchlist.user_id == current_user.id,
+            Watchlist.name == watchlist_name,
+            WatchlistItem.ticker == ticker,
+        )
+        .with_entities(
+            WatchlistItem.ticker,
+            WatchlistItem.quantity,
+            WatchlistItem.price,
+            func.date(WatchlistItem.trade_date).label("date")
+        )
+        .order_by(WatchlistItem.trade_date)
+        .all()
+    )
+    return trade_history
+
+
+def get_portfolio_flows(watchlist_name):
+    flows = (
+        db
+        .session
+        .query(WatchlistItem)
+        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+        .with_entities(
+            func.date(WatchlistItem.trade_date).label('index'),
+            func.sum(WatchlistItem.quantity * WatchlistItem.price * (-1)).label('flows')
+        )
+        .filter(
+            Watchlist.user_id == current_user.id,
+            Watchlist.name == watchlist_name
+        )
+        .group_by(func.date(WatchlistItem.trade_date))
+        .order_by(func.date(WatchlistItem.trade_date))
+        .all()
+    )
+    return flows

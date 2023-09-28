@@ -9,7 +9,10 @@ from portfolio_builder import db
 from portfolio_builder.public.forms import (
     AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
-from portfolio_builder.public.models import Price, Security, Watchlist, WatchlistItem
+from portfolio_builder.public.models import (
+    Price, Security, Watchlist, WatchlistItem,
+    get_watchlist_names, get_watchlist_items
+)
 from portfolio_builder.tasks import load_prices
 
 
@@ -31,34 +34,6 @@ def check_prices(ticker):
         end_date = dt.date.today() - dt.timedelta(days=1)
         start_date = end_date - dt.timedelta(days=100)
         load_prices([ticker], start_date, end_date)
-
-
-def get_watchlist_names():
-    watchlists = (
-        db
-        .session
-        .query(Watchlist)
-        .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id)
-        .order_by(Watchlist.id)
-        .all()
-    )
-    return [item[0] for item in watchlists]
-
-
-def get_watchlist_items(filter_clause):
-    watchlist_items = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(
-            Watchlist.user_id == current_user.id,
-            *filter_clause
-        )
-        .all()
-    )
-    return watchlist_items
 
 
 @bp.route("/", methods=['GET', 'POST'])

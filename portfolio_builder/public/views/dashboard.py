@@ -2,10 +2,10 @@ import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required
 
-from portfolio_builder.public.views.watchlist import get_watchlist_names
+from portfolio_builder.public.models import get_watchlist_names, get_portfolio_flows
 from portfolio_builder.public.portfolio import generate_hpr
 from portfolio_builder.public.utils import (
-    get_position_summary, get_portfolio_flows, get_portfolio_summary, 
+    get_position_summary, get_portfolio_summary, 
 )
 
 
