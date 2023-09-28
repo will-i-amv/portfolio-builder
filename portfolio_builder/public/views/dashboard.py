@@ -13,15 +13,15 @@ from portfolio_builder.public.portfolio import FifoAccounting
 bp = Blueprint('dashboard', __name__)
 
 
-def calc_daily_val(ticker, df_prices, df_summaries):
+def calc_portf_val_daily(ticker, df_prices, df_positions):
     """
     Combines the position breakdown with the daily prices to calculate
     daily market value. The Daily market value is the positions quantity
     multiplied by the market price.
     """
-    df_valuations = (
+    df_portf_val = (
         pd
-        .merge(df_prices, df_summaries, on=['date'], how='left')
+        .merge(df_prices, df_positions, on=['date'], how='left')
         .astype({
             'quantity': 'float64', 
             'price': 'float64',
@@ -34,21 +34,21 @@ def calc_daily_val(ticker, df_prices, df_summaries):
         .set_index('date')
         .dropna()
     )
-    return df_valuations
+    return df_portf_val
 
 
-def get_position_summary(watchlist_name):
-    all_tickers = get_watch_tickers(filter=[
+def get_portf_positions(watchlist_name):
+    tickers = get_watch_tickers(filter=[
         Watchlist.name == watchlist_name
     ])
-    summary_table = {}
-    for ticker in all_tickers:
+    portf_pos = {}
+    for ticker in tickers:
         trade_history = get_watch_trade_history(filter=[
             Watchlist.name == watchlist_name,
             WatchlistItem.ticker == ticker,
         ])
         fifo_accounting = FifoAccounting(trade_history)
-        df_summary = (
+        df_positions = (
             pd
             .DataFrame(
                 data=fifo_accounting.breakdown, 
@@ -61,13 +61,13 @@ def get_position_summary(watchlist_name):
                 'average_price': 'float64',
             })
         )
-        summary_table[ticker] = df_summary
-    return summary_table
+        portf_pos[ticker] = df_positions
+    return portf_pos
 
 
-def get_portfolio_summary(all_summaries):
-    df = pd.DataFrame()
-    for ticker, df_summaries in all_summaries.items():
+def get_portf_valuations(portf_pos):
+    df_portf_val = pd.DataFrame()
+    for ticker, df_positions in portf_pos.items():
         prices = get_prices(ticker)
         df_prices = (
             pd
@@ -81,16 +81,16 @@ def get_portfolio_summary(all_summaries):
                 'price': 'float64'
             })
         )
-        pos_valuation = calc_daily_val(ticker, df_prices, df_summaries)
-        if df.empty:
-            df = pos_valuation
+        df = calc_portf_val_daily(ticker, df_prices, df_positions)
+        if df_portf_val.empty:
+            df_portf_val = df
         else:
-            df = df.join(pos_valuation)
-        df = df.fillna(method="ffill")
-    return df
+            df_portf_val = df_portf_val.join(df)
+        df_portf_val = df_portf_val.fillna(method="ffill")
+    return df_portf_val
 
 
-def convert_flows(flows):
+def calc_portf_flows_adjusted(flows):
     """
     Using the Holding Period Return (HPR) methodology. Purchases of
     securities are accounted as fund inflows and the sale of securities are
@@ -116,7 +116,7 @@ def convert_flows(flows):
     return df_flows
 
 
-def generate_hpr(df_summary, df_flows):
+def calc_portf_hpr(df_portf_val, df_portf_flows):
     """
     Where PortVal = Portfolio Value. The Formula for the Daily
     Holding Period Return (HPR) is calculated as follows:
@@ -127,14 +127,20 @@ def generate_hpr(df_summary, df_flows):
         caclulate the Percentage change before and after each cash flow.
     Returns a named tuple of daily HPR % changes.
     """
-    df_valuation =( 
-        df_summary
+    df_portf_val_filtered =( 
+        df_portf_val
         .assign(portfolio_val=lambda x: x.sum(axis=1))
         .loc[:, ['portfolio_val']]
     )
-    df = (
+    df_portf_hpr = (
         pd
-        .merge(df_valuation, df_flows, left_index=True, right_index=True, how='left')
+        .merge(
+            df_portf_val_filtered, 
+            df_portf_flows, 
+            left_index=True, 
+            right_index=True, 
+            how='left'
+        )
         .assign(cash=lambda x: x['cash'].ffill())
         .fillna(0)
         .assign(
@@ -156,20 +162,20 @@ def generate_hpr(df_summary, df_flows):
         .loc[:, ['pct_change']]
         .reset_index()
     )
-    return list(df.itertuples(index=False))
+    return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_pie_chart(df_portfolio):
+def get_pie_chart(df_portf_val):
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
     positions the next n positons are aggregated to and classified
     as 'Other'
     """
-    if df_portfolio.empty:
-        return list(df_portfolio.itertuples(index=False))
+    if df_portf_val.empty:
+        return list(df_portf_val.itertuples(index=False))
     df_initial = (
-        df_portfolio
+        df_portf_val
         .tail(1)
         .T
         .reset_index()
@@ -209,15 +215,15 @@ def get_pie_chart(df_portfolio):
         return list(df_final.itertuples(index=False))
 
 
-def get_bar_chart(df_portfolio):
+def get_bar_chart(df_portf_val):
     """
     Returns a named tuple of the 5 largest positions by absolute exposure
     in descending order
     """
-    if df_portfolio.empty:
-        return list(df_portfolio.itertuples(index=False))
+    if df_portf_val.empty:
+        return list(df_portf_val.itertuples(index=False))
     df_initial = (
-        df_portfolio
+        df_portf_val
         .tail(1)
         .T
         .reset_index()
@@ -241,29 +247,29 @@ def index():
         curr_watch_name = request.form.get('watchlist_group_selection')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    summaries_by_ticker = get_position_summary(curr_watch_name)
-    df_portfolio = get_portfolio_summary(summaries_by_ticker)
-    flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
-    df_flows_adj = convert_flows(flows)
-    portfolio_hpr = generate_hpr(df_portfolio, df_flows_adj)
-    summary = [
+    portf_pos = get_portf_positions(curr_watch_name)
+    df_portf_val = get_portf_valuations(portf_pos)
+    portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
+    df_portf_flows = calc_portf_flows_adjusted(portf_flows)
+    portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows)
+    last_portf_pos = [
         (
-            df
+            df_positions
             .assign(ticker=ticker)
             .sort_values(by=['date'])
             .drop(['date'], axis=1)
             .tail(1)
             .to_dict('records')[0]
         ) 
-        for ticker, df in summaries_by_ticker.items()
+        for ticker, df_positions in portf_pos.items()
     ]
-    if len(summary) > 7:
-        summary = summary[0:7]
+    if len(last_portf_pos) > 7:
+        last_portf_pos = last_portf_pos[0:7]
     content = {
-        'summary': summary, 
-        'line_chart': portfolio_hpr,
-        'pie_chart': get_pie_chart(df_portfolio), 
-        'bar_chart': get_bar_chart(df_portfolio),
+        'summary': last_portf_pos, 
+        'line_chart': portf_hpr,
+        'pie_chart': get_pie_chart(df_portf_val), 
+        'bar_chart': get_bar_chart(df_portf_val),
         'watch_names': watch_names, 
         'curr_watch_name': curr_watch_name
     }
