@@ -13,34 +13,13 @@ from portfolio_builder.public.portfolio import FifoAccounting
 bp = Blueprint('dashboard', __name__)
 
 
-def calc_daily_valuations(ticker, prices, summaries):
+def calc_daily_val(ticker, df_prices, df_summaries):
     """
     Combines the position breakdown with the daily prices to calculate
     daily market value. The Daily market value is the positions quantity
     multiplied by the market price.
     """
-    df_summaries = (
-        summaries
-        .astype({
-            # 'date': 'datetime64[ns]', 
-            'date': 'str', 
-            'quantity': 'float64', 
-            'average_price': 'float64',
-        })
-    )
-    df_prices = (
-        pd
-        .DataFrame(
-            data=prices, 
-            columns=["date", "price"]
-        )
-        .astype({
-            # 'date': 'datetime64[ns]', 
-            'date': 'str', 
-            'price': 'float64'
-        })
-    )
-    df_cleaned = (
+    df_valuations = (
         pd
         .merge(df_prices, df_summaries, on=['date'], how='left')
         .astype({
@@ -55,7 +34,7 @@ def calc_daily_valuations(ticker, prices, summaries):
         .set_index('date')
         .dropna()
     )
-    return df_cleaned
+    return df_valuations
 
 
 def get_position_summary(watchlist_name):
@@ -75,6 +54,12 @@ def get_position_summary(watchlist_name):
                 data=fifo_accounting.breakdown, 
                 columns=['date', 'quantity', 'average_price']
             )
+            .astype({
+                # 'date': 'datetime64[ns]', 
+                'date': 'str', 
+                'quantity': 'float64', 
+                'average_price': 'float64',
+            })
         )
         summary_table[ticker] = df_summary
     return summary_table
@@ -82,9 +67,21 @@ def get_position_summary(watchlist_name):
 
 def get_portfolio_summary(all_summaries):
     df = pd.DataFrame()
-    for ticker, summaries in all_summaries.items():
+    for ticker, df_summaries in all_summaries.items():
         prices = get_prices(ticker)
-        pos_valuation = calc_daily_valuations(ticker, prices, summaries)
+        df_prices = (
+            pd
+            .DataFrame(
+                data=prices, 
+                columns=["date", "price"]
+            )
+            .astype({
+                # 'date': 'datetime64[ns]', 
+                'date': 'str', 
+                'price': 'float64'
+            })
+        )
+        pos_valuation = calc_daily_val(ticker, df_prices, df_summaries)
         if df.empty:
             df = pos_valuation
         else:
@@ -119,7 +116,7 @@ def convert_flows(flows):
     return df_flows
 
 
-def generate_hpr(df_summary, flows):
+def generate_hpr(df_summary, df_flows):
     """
     Where PortVal = Portfolio Value. The Formula for the Daily
     Holding Period Return (HPR) is calculated as follows:
@@ -130,7 +127,6 @@ def generate_hpr(df_summary, flows):
         caclulate the Percentage change before and after each cash flow.
     Returns a named tuple of daily HPR % changes.
     """
-    df_flows = convert_flows(flows)
     df_valuation =( 
         df_summary
         .assign(portfolio_val=lambda x: x.sum(axis=1))
@@ -245,7 +241,11 @@ def index():
         curr_watch_name = request.form.get('watchlist_group_selection')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    summaries = get_position_summary(curr_watch_name)
+    summaries_by_ticker = get_position_summary(curr_watch_name)
+    df_portfolio = get_portfolio_summary(summaries_by_ticker)
+    flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
+    df_flows_adj = convert_flows(flows)
+    portfolio_hpr = generate_hpr(df_portfolio, df_flows_adj)
     summary = [
         (
             df
@@ -255,18 +255,15 @@ def index():
             .tail(1)
             .to_dict('records')[0]
         ) 
-        for ticker, df in summaries.items()
+        for ticker, df in summaries_by_ticker.items()
     ]
     if len(summary) > 7:
         summary = summary[0:7]
-    flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
-    portfolio = get_portfolio_summary(summaries)
-    portfolio_hpr = generate_hpr(portfolio, flows)
     content = {
         'summary': summary, 
         'line_chart': portfolio_hpr,
-        'pie_chart': get_pie_chart(portfolio), 
-        'bar_chart': get_bar_chart(portfolio),
+        'pie_chart': get_pie_chart(df_portfolio), 
+        'bar_chart': get_bar_chart(df_portfolio),
         'watch_names': watch_names, 
         'curr_watch_name': curr_watch_name
     }
