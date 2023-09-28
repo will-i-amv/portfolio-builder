@@ -56,8 +56,7 @@ def get_portf_positions(watchlist_name):
                 columns=['date', 'quantity', 'average_cost']
             )
             .astype({
-                # 'date': 'datetime64[ns]', 
-                'date': 'str', 
+                'date': 'datetime64[ns]', 
                 'quantity': 'float64', 
                 'average_cost': 'float64',
             })
@@ -77,8 +76,7 @@ def get_portf_valuations(portf_pos):
                 columns=["date", "price"]
             )
             .astype({
-                # 'date': 'datetime64[ns]', 
-                'date': 'str', 
+                'date': 'datetime64[ns]', 
                 'price': 'float64'
             })
         )
@@ -104,7 +102,7 @@ def calc_portf_flows_adjusted(flows):
     df_flows = (
         pd
         .DataFrame(flows, columns=["date", "flows"])
-        .astype({'date': 'str'})
+        .astype({'date': 'datetime64[ns]'})
         .assign(
             cash=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
             inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
