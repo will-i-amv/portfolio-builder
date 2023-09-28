@@ -43,7 +43,7 @@
                                 {% if item.quantity != 0 %}
                                     <td class="c2">{{ item.ticker }}</td>
                                     <td class="c3">{{ item.quantity }}</td>
-                                    <td class="c3">{{ item.average_price }}</td>
+                                    <td class="c3">{{ item.average_cost }}</td>
                                 {% endif %}
                             </tr>
                         {% endfor %}
@@ -69,7 +69,7 @@
                             label: 'Weighting',
                             data: [
                                 {% for item in pie_chart %}
-                                    "{{item.market_val_perc}}",
+                                    "{{item.market_val_pct}}",
                                 {% endfor %}
                             ],
                             backgroundColor: [

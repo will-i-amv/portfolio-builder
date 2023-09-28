@@ -53,13 +53,13 @@ def get_portf_positions(watchlist_name):
             pd
             .DataFrame(
                 data=fifo_accounting.breakdown, 
-                columns=['date', 'quantity', 'average_price']
+                columns=['date', 'quantity', 'average_cost']
             )
             .astype({
                 # 'date': 'datetime64[ns]', 
                 'date': 'str', 
                 'quantity': 'float64', 
-                'average_price': 'float64',
+                'average_cost': 'float64',
             })
         )
         portf_pos[ticker] = df_positions
@@ -130,8 +130,8 @@ def calc_portf_hpr(df_portf_val, df_portf_flows):
     """
     df_portf_val_filtered =( 
         df_portf_val
-        .assign(portfolio_val=lambda x: x.sum(axis=1))
-        .loc[:, ['portfolio_val']]
+        .assign(portf_val=lambda x: x.sum(axis=1))
+        .loc[:, ['portf_val']]
     )
     df_portf_hpr = (
         pd
@@ -145,16 +145,16 @@ def calc_portf_hpr(df_portf_val, df_portf_flows):
         .assign(cash=lambda x: x['cash'].ffill())
         .fillna(0)
         .assign(
-            total_portfolio_val=lambda x: x["portfolio_val"] + x["cash"]
+            total_portf_val=lambda x: x["portf_val"] + x["cash"]
         )
         .assign(
-            total_portfolio_val_prev=lambda x: x['total_portfolio_val'].shift(1)
+            total_portf_val_prev=lambda x: x['total_portf_val'].shift(1)
         )
         .assign(
             pct_change=lambda x: (
                 (
-                    x["total_portfolio_val"] / 
-                    (x["total_portfolio_val_prev"] + x["inflows"])
+                    x["total_portf_val"] / 
+                    (x["total_portf_val_prev"] + x["inflows"])
                 ) - 1
             ) * 100
         )
@@ -181,18 +181,18 @@ def get_pie_chart(df_portf_val):
         .T
         .reset_index()
     )
-    df_initial.columns = ['ticker', 'Market_val']
+    df_initial.columns = ['ticker', 'market_val']
     df_temp = (
         df_initial
-        .assign(Market_val=lambda x: x["Market_val"].abs())
+        .assign(market_val=lambda x: x["market_val"].abs())
         .replace({'ticker': {'market_val_': ''}}, regex=True)
         .assign(
-            market_val_perc=lambda x: 
-                (x["Market_val"]  / x["Market_val"].sum()) * 100
+            market_val_pct=lambda x: 
+                (x["market_val"]  / x["market_val"].sum()) * 100
         )
-        .round({'market_val_perc': 2})
-        .loc[lambda x: x["Market_val"] != 0.0]
-        .sort_values(by=['market_val_perc'], ascending=False)
+        .round({'market_val_pct': 2})
+        .loc[lambda x: x["market_val"] != 0.0]
+        .sort_values(by=['market_val_pct'], ascending=False)
     )
     max_len = 6
     df_len = df_temp.shape[0] 
