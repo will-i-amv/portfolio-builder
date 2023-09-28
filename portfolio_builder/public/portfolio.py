@@ -34,7 +34,6 @@ class FifoAccounting:
         )
 
     def set_ticker(self):
-        # tickers = set([i.ticker for i in self.trade_history])
         tickers = set([trade.ticker for trade in self.trade_history])
         if len(tickers) == 1:
             return self.trade_history[0].ticker
@@ -107,7 +106,6 @@ class FifoAccounting:
     def set_initial_trade(self):
         units = self.trade_history[0].quantity
         price = self.trade_history[0].price
-        # date = self.trade_history[0].trade_date
         date = self.trade_history[0].date
         if units >= 0:
             self.open_direction = "long"
@@ -146,7 +144,6 @@ class FifoAccounting:
         while counter < len(self.trade_history):
             units = self.trade_history[counter].quantity
             price = self.trade_history[counter].price
-            # date = self.trade_history[counter].trade_date
             date = self.trade_history[counter].date
             
             # Both trades have the same sign
