@@ -11,7 +11,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Price, Security, Watchlist, WatchlistItem,
-    get_watchlist_names, get_watchlist_items
+    get_all_watch_names, get_watch_items
 )
 from portfolio_builder.tasks import load_prices
 
@@ -39,7 +39,7 @@ def check_prices(ticker):
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
-    watch_names = get_watchlist_names()
+    watch_names = get_all_watch_names()
     select_form = SelectWatchlistForm()
     add_watchlist_form = AddWatchlistForm()
     add_item_form = AddItemForm()
@@ -55,7 +55,7 @@ def index():
         curr_watch_name = select_form.watchlist.data # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
-    watch_items = get_watchlist_items(filter_clause=[
+    watch_items = get_watch_items(filter=[
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
@@ -120,7 +120,7 @@ def delete_watchlist():
 @bp.route('/add', methods=['POST'])
 @login_required
 def add():
-    watchlists = get_watchlist_names()
+    watchlists = get_all_watch_names()
     add_item_form = AddItemForm()
     add_item_form.watchlist.choices = [
         (item, item)
@@ -162,7 +162,7 @@ def add():
 @bp.route('/<watch_name>/<ticker>/update', methods=['POST'])
 @login_required
 def update(watch_name, ticker):
-    watchlists = get_watchlist_names()
+    watchlists = get_all_watch_names()
     add_item_form = AddItemForm()
     add_item_form.watchlist.choices =  [
         (item, item)
@@ -180,7 +180,7 @@ def update(watch_name, ticker):
             )
             .first()
         )    
-        last_item = get_watchlist_items(filter_clause=[
+        last_item = get_watch_items(filter=[
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
@@ -211,7 +211,7 @@ def update(watch_name, ticker):
 @bp.route('/<watch_name>/<ticker>/delete', methods=['POST'])
 @login_required
 def delete(watch_name, ticker):
-    items = get_watchlist_items(filter_clause=[
+    items = get_watch_items(filter=[
         Watchlist.name == watch_name,
         WatchlistItem.ticker == ticker,
     ])

@@ -2,7 +2,7 @@ import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required
 
-from portfolio_builder.public.models import get_watchlist_names, get_portfolio_flows
+from portfolio_builder.public.models import get_all_watch_names, get_watch_flows
 from portfolio_builder.public.portfolio import generate_hpr
 from portfolio_builder.public.utils import (
     get_position_summary, get_portfolio_summary, 
@@ -89,7 +89,7 @@ def get_bar_chart(df_portfolio):
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-    watch_names = get_watchlist_names()
+    watch_names = get_all_watch_names()
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection')
     else:
@@ -108,7 +108,7 @@ def index():
     ]
     if len(summary) > 7:
         summary = summary[0:7]
-    flows = get_portfolio_flows(curr_watch_name)
+    flows = get_watch_flows(curr_watch_name)
     portfolio = get_portfolio_summary(summaries)
     portfolio_hpr = generate_hpr(portfolio, flows)
     content = {

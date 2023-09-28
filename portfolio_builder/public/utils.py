@@ -2,7 +2,7 @@ import pandas as pd
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_watchlist_tickers, get_trade_history, get_prices
+    get_watch_tickers, get_watch_trade_history, get_prices
 )
 from portfolio_builder.public.portfolio import (
     calc_daily_valuations, FifoAccounting
@@ -10,10 +10,10 @@ from portfolio_builder.public.portfolio import (
 
 
 def get_position_summary(watchlist_name):
-    all_tickers = get_watchlist_tickers(watchlist_name)
+    all_tickers = get_watch_tickers(watchlist_name)
     summary_table = {}
     for ticker in all_tickers:
-        trade_history = get_trade_history(watchlist_name, ticker)
+        trade_history = get_watch_trade_history(watchlist_name, ticker)
         fifo_accounting = FifoAccounting(trade_history)
         df_summary = (
             pd
