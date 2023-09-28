@@ -136,8 +136,7 @@ def get_watch_items(filter):
     return items
 
 
-def get_watch_tickers(watchlist_name):
-    filter = [Watchlist.name == watchlist_name]
+def get_watch_tickers(filter):
     query = _watchlist_items_query(filter)
     tickers = (
         query
@@ -149,11 +148,7 @@ def get_watch_tickers(watchlist_name):
     return [item.ticker for item in tickers]
 
 
-def get_watch_trade_history(watchlist_name, ticker):
-    filter = [
-        Watchlist.name == watchlist_name,
-        WatchlistItem.ticker == ticker,
-    ]
+def get_watch_trade_history(filter):
     query = _watchlist_items_query(filter)
     history = (
         query
@@ -169,8 +164,7 @@ def get_watch_trade_history(watchlist_name, ticker):
     return history
 
 
-def get_watch_flows(watchlist_name):
-    filter = [Watchlist.name == watchlist_name]
+def get_watch_flows(filter):
     query = _watchlist_items_query(filter)
     flows = (
         query

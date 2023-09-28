@@ -2,7 +2,9 @@ import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required
 
-from portfolio_builder.public.models import get_all_watch_names, get_watch_flows
+from portfolio_builder.public.models import (
+    Watchlist, get_all_watch_names, get_watch_flows
+)
 from portfolio_builder.public.portfolio import generate_hpr
 from portfolio_builder.public.utils import (
     get_position_summary, get_portfolio_summary, 
@@ -108,7 +110,7 @@ def index():
     ]
     if len(summary) > 7:
         summary = summary[0:7]
-    flows = get_watch_flows(curr_watch_name)
+    flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
     portfolio = get_portfolio_summary(summaries)
     portfolio_hpr = generate_hpr(portfolio, flows)
     content = {
