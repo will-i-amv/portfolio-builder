@@ -116,21 +116,8 @@ def get_prices(ticker):
     return prices
 
 
-def get_watchlist_names():
-    watchlists = (
-        db
-        .session
-        .query(Watchlist)
-        .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id)
-        .order_by(Watchlist.id)
-        .all()
-    )
-    return [item[0] for item in watchlists]
-
-
-def get_watchlist_items(filter_clause):
-    watchlist_items = (
+def _watchlist_items_query(filter_clause):
+    query = (
         db
         .session
         .query(WatchlistItem)
@@ -139,21 +126,21 @@ def get_watchlist_items(filter_clause):
             Watchlist.user_id == current_user.id,
             *filter_clause
         )
-        .all()
     )
-    return watchlist_items
+    return query
+
+
+def get_watchlist_items(filter_clause):
+    query = _watchlist_items_query(filter_clause)
+    items = query.all()
+    return items
 
 
 def get_watchlist_tickers(watchlist_name):
+    filter_clause = [Watchlist.name == watchlist_name]
+    query = _watchlist_items_query(filter_clause)
     tickers = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(
-            Watchlist.user_id == current_user.id,
-            Watchlist.name == watchlist_name
-        )
+        query
         .with_entities(WatchlistItem.ticker)
         .distinct(WatchlistItem.ticker)
         .order_by(WatchlistItem.ticker)
@@ -163,16 +150,13 @@ def get_watchlist_tickers(watchlist_name):
 
 
 def get_trade_history(watchlist_name, ticker):
+    filter_clause = [
+        Watchlist.name == watchlist_name,
+        WatchlistItem.ticker == ticker,
+    ]
+    query = _watchlist_items_query(filter_clause)
     trade_history = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(
-            Watchlist.user_id == current_user.id,
-            Watchlist.name == watchlist_name,
-            WatchlistItem.ticker == ticker,
-        )
+        query
         .with_entities(
             WatchlistItem.ticker,
             WatchlistItem.quantity,
@@ -186,21 +170,29 @@ def get_trade_history(watchlist_name, ticker):
 
 
 def get_portfolio_flows(watchlist_name):
+    filter_clause = [Watchlist.name == watchlist_name]
+    query = _watchlist_items_query(filter_clause)
     flows = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+        query
+        .group_by(func.date(WatchlistItem.trade_date))
         .with_entities(
             func.date(WatchlistItem.trade_date).label('index'),
             func.sum(WatchlistItem.quantity * WatchlistItem.price * (-1)).label('flows')
         )
-        .filter(
-            Watchlist.user_id == current_user.id,
-            Watchlist.name == watchlist_name
-        )
-        .group_by(func.date(WatchlistItem.trade_date))
         .order_by(func.date(WatchlistItem.trade_date))
         .all()
     )
     return flows
+
+
+def get_watchlist_names():
+    watchlists = (
+        db
+        .session
+        .query(Watchlist)
+        .with_entities(Watchlist.name)
+        .filter_by(user_id=current_user.id)
+        .order_by(Watchlist.id)
+        .all()
+    )
+    return [item[0] for item in watchlists]
