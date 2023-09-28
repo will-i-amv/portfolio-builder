@@ -48,6 +48,7 @@ def get_portf_positions(watchlist_name):
             WatchlistItem.ticker == ticker,
         ])
         fifo_accounting = FifoAccounting(trade_history)
+        fifo_accounting.calc_fifo()
         df_positions = (
             pd
             .DataFrame(

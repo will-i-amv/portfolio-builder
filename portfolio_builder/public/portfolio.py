@@ -25,7 +25,6 @@ class FifoAccounting:
         self.net_position = 0
         self.average_cost = 0
         self.ticker = self.set_ticker()
-        self.calc_fifo()
 
     def __repr__(self):
         return (
