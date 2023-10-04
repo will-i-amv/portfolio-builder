@@ -1,22 +1,25 @@
 import datetime as dt
 
-from flask_login import current_user
 from flask import Blueprint, request, flash, redirect, render_template, url_for
-from flask_login import login_required
+from flask.wrappers import Response
+from flask_login import current_user, login_required
 from sqlalchemy.orm import aliased
 
 from portfolio_builder import db
 from portfolio_builder.public.forms import (
     AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
-from portfolio_builder.public.models import Price, Security, Watchlist, WatchlistItem
+from portfolio_builder.public.models import (
+    Price, Security, Watchlist, WatchlistItem,
+    get_all_watch_names, get_watch_items
+)
 from portfolio_builder.tasks import load_prices
 
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
 
 
-def check_prices(ticker):
+def check_prices(ticker: str) -> None:
     price = aliased(Price)
     sec = aliased(Security)
     first_price = (
@@ -33,38 +36,10 @@ def check_prices(ticker):
         load_prices([ticker], start_date, end_date)
 
 
-def get_watchlist_names():
-    watchlists = (
-        db
-        .session
-        .query(Watchlist)
-        .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id)
-        .order_by(Watchlist.id)
-        .all()
-    )
-    return [item[0] for item in watchlists]
-
-
-def get_watchlist_items(filter_clause):
-    watchlist_items = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(
-            Watchlist.user_id == current_user.id,
-            *filter_clause
-        )
-        .all()
-    )
-    return watchlist_items
-
-
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
-def index():
-    watch_names = get_watchlist_names()
+def index() -> str:
+    watch_names = get_all_watch_names()
     select_form = SelectWatchlistForm()
     add_watchlist_form = AddWatchlistForm()
     add_item_form = AddItemForm()
@@ -80,7 +55,7 @@ def index():
         curr_watch_name = select_form.watchlist.data # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
-    watch_items = get_watchlist_items(filter_clause=[
+    watch_items = get_watch_items(filter=[
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
@@ -99,7 +74,7 @@ def index():
 
 @bp.route('/add_watchlist', methods=['POST'])
 @login_required
-def add_watchlist():
+def add_watchlist() -> Response:
     watchlist_form = AddWatchlistForm()
     if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
@@ -110,7 +85,6 @@ def add_watchlist():
         db.session.add(new_watchlist)
         db.session.commit()
         flash(f"The watchlist '{watchlist_name}' has been added.")
-        return redirect(url_for('watchlist.index'))
     elif watchlist_form.errors:
         for error_name, error_desc in watchlist_form.errors.items():
             error_name = error_name.title()
@@ -120,7 +94,7 @@ def add_watchlist():
 
 @bp.route('/delete_watchlist', methods=['POST'])
 @login_required
-def delete_watchlist():
+def delete_watchlist() -> Response:
     if not request.method == "POST":
         return redirect(url_for('watchlist.index'))
     else:
@@ -144,8 +118,8 @@ def delete_watchlist():
 
 @bp.route('/add', methods=['POST'])
 @login_required
-def add():
-    watchlists = get_watchlist_names()
+def add() -> Response:
+    watchlists = get_all_watch_names()
     add_item_form = AddItemForm()
     add_item_form.watchlist.choices = [
         (item, item)
@@ -168,7 +142,6 @@ def add():
             ticker=add_item_form.ticker.data, 
             quantity=add_item_form.quantity.data,
             price=add_item_form.price.data, 
-            sector=add_item_form.sector.data,
             trade_date=add_item_form.trade_date.data,
             comments=add_item_form.comments.data, 
             watchlist_id=watchlist.id
@@ -186,8 +159,8 @@ def add():
 
 @bp.route('/<watch_name>/<ticker>/update', methods=['POST'])
 @login_required
-def update(watch_name, ticker):
-    watchlists = get_watchlist_names()
+def update(watch_name: str, ticker: str) -> Response:
+    watchlists = get_all_watch_names()
     add_item_form = AddItemForm()
     add_item_form.watchlist.choices =  [
         (item, item)
@@ -205,7 +178,7 @@ def update(watch_name, ticker):
             )
             .first()
         )    
-        last_item = get_watchlist_items(filter_clause=[
+        last_item = get_watch_items(filter=[
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
@@ -218,7 +191,6 @@ def update(watch_name, ticker):
                 ticker=add_item_form.ticker.data, 
                 quantity=add_item_form.quantity.data,
                 price=add_item_form.price.data, 
-                sector=add_item_form.sector.data,
                 trade_date=add_item_form.trade_date.data,
                 comments=add_item_form.comments.data,
                 watchlist_id=watchlist.id
@@ -235,8 +207,8 @@ def update(watch_name, ticker):
 
 @bp.route('/<watch_name>/<ticker>/delete', methods=['POST'])
 @login_required
-def delete(watch_name, ticker):
-    items = get_watchlist_items(filter_clause=[
+def delete(watch_name: str, ticker: str) -> Response:
+    items = get_watch_items(filter=[
         Watchlist.name == watch_name,
         WatchlistItem.ticker == ticker,
     ])

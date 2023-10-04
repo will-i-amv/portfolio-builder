@@ -25,7 +25,7 @@ class AddWatchlistForm(FlaskForm):
     )
     submit = SubmitField("Add")
 
-    def validate_name(self, name):
+    def validate_name(self, name: StringField) -> None:
         name_check = (
             Watchlist
             .query
@@ -60,17 +60,13 @@ class AddItemForm(FlaskForm):
         ]
     )
     trade_date = DateTimeField("Trade Date", default=get_default_date)
-    sector = StringField(
-        "Sector",
-        validators=[v.InputRequired()]
-    )
     comments = TextAreaField(
         "Comments",
         validators=[v.Optional(), v.Length(max=140)]
     )
     submit = SubmitField("Add to Watchlist")
 
-    def validate_ticker(self, ticker):
+    def validate_ticker(self, ticker: StringField) -> None:
         ticker_db = (
             db
             .session
