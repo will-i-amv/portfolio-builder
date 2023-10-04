@@ -47,10 +47,6 @@ def index() -> str:
         (item, item)
         for item in watch_names
     ]
-    add_item_form.watchlist.choices =  [
-        (item, item)
-        for item in watch_names
-    ]
     if select_form.validate_on_submit():
         curr_watch_name = select_form.watchlist.data # Current watchlist name
     else:
@@ -116,29 +112,22 @@ def delete_watchlist() -> Response:
         return redirect(url_for('watchlist.index'))
 
 
-@bp.route('/add', methods=['POST'])
+@bp.route('/<watch_name>/add', methods=['POST'])
 @login_required
-def add() -> Response:
-    watchlists = get_all_watch_names()
+def add(watch_name: str) -> Response:
     add_item_form = AddItemForm()
-    add_item_form.watchlist.choices = [
-        (item, item)
-        for item in watchlists
-    ]
     if add_item_form.validate_on_submit():
-        watchlist_name = add_item_form.watchlist.data
         watchlist = (
             db
             .session
             .query(Watchlist)
             .filter(
                 Watchlist.user_id==current_user.id,
-                Watchlist.name==watchlist_name
+                Watchlist.name==watch_name
             )
             .first()
         )    
         item = WatchlistItem(
-            watchlist=watchlist_name, 
             ticker=add_item_form.ticker.data, 
             quantity=add_item_form.quantity.data,
             price=add_item_form.price.data, 
@@ -160,21 +149,15 @@ def add() -> Response:
 @bp.route('/<watch_name>/<ticker>/update', methods=['POST'])
 @login_required
 def update(watch_name: str, ticker: str) -> Response:
-    watchlists = get_all_watch_names()
     add_item_form = AddItemForm()
-    add_item_form.watchlist.choices =  [
-        (item, item)
-        for item in watchlists
-    ]
     if add_item_form.validate_on_submit():
-        watchlist_name = add_item_form.watchlist.data
         watchlist = (
             db
             .session
             .query(Watchlist)
             .filter(
                 Watchlist.user_id==current_user.id,
-                Watchlist.name==watchlist_name
+                Watchlist.name==watch_name,
             )
             .first()
         )    
@@ -187,7 +170,6 @@ def update(watch_name: str, ticker: str) -> Response:
         if last_item:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
-                watchlist=add_item_form.watchlist.data, 
                 ticker=add_item_form.ticker.data, 
                 quantity=add_item_form.quantity.data,
                 price=add_item_form.price.data, 

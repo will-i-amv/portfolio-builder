@@ -87,7 +87,6 @@ class Watchlist(db.Model):
 class WatchlistItem(db.Model):
     __tablename__ = "watchlist_items"
     id = db.Column(db.Integer, primary_key=True, index=True)
-    watchlist = db.Column(db.String(25), nullable=False)
     ticker = db.Column(db.String(20), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)

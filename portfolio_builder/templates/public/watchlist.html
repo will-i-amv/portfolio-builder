@@ -56,9 +56,8 @@
                         <h4 class="modal-title">Add Item to Watchlist</h4>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('watchlist.add') }}" method="post">
-                            <dl>{{ render_field(add_item_form.watchlist) }}
-                                {{ render_field(add_item_form.ticker) }}
+                        <form action="{{ url_for('watchlist.add', watch_name = curr_watch_name) }}" method="post">
+                            <dl>{{ render_field(add_item_form.ticker) }}
                                 {{ render_field(add_item_form.quantity) }}
                                 {{ render_field(add_item_form.price) }}
                                 {{ render_field(add_item_form.trade_date) }}
@@ -180,8 +179,7 @@
                                         </div>
                                         <div class="modal-body">
                                             <form action="{{ url_for('watchlist.update', watch_name = curr_watch_name,  ticker = item.ticker) }}" method="post">
-                                                <dl>{{ render_field(add_item_form.watchlist) }}
-                                                    {{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
+                                                <dl>{{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
                                                     {{ render_field(add_item_form.quantity, value = item.quantity) }}
                                                     {{ render_field(add_item_form.price, value = item.price) }}
                                                     {{ render_field(add_item_form.trade_date, value = item.trade_date.strftime('%Y-%m-%d %H:%M:%S')) }}

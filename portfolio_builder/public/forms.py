@@ -40,7 +40,6 @@ class AddWatchlistForm(FlaskForm):
 
 class AddItemForm(FlaskForm):
     order_id = HiddenField("")
-    watchlist = SelectField("Watchlist",  validators=[v.InputRequired()])
     ticker = StringField(
         "Ticker",
         validators=[v.Length(min=2, max=20), v.InputRequired()]
