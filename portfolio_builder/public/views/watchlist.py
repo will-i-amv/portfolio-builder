@@ -151,16 +151,6 @@ def add(watch_name: str) -> Response:
 def update(watch_name: str, ticker: str) -> Response:
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        watchlist = (
-            db
-            .session
-            .query(Watchlist)
-            .filter(
-                Watchlist.user_id==current_user.id,
-                Watchlist.name==watch_name,
-            )
-            .first()
-        )    
         last_item = get_watch_items(filter=[
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
@@ -175,7 +165,7 @@ def update(watch_name: str, ticker: str) -> Response:
                 price=add_item_form.price.data, 
                 trade_date=add_item_form.trade_date.data,
                 comments=add_item_form.comments.data,
-                watchlist_id=watchlist.id
+                watchlist_id=last_item.watchlist_id
             )
             db.session.add_all([last_item, new_item])
             db.session.commit()
