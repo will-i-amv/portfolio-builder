@@ -90,6 +90,7 @@ class WatchlistItem(db.Model):
     ticker = db.Column(db.String(20), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
+    side = db.Column(db.String(5), nullable=False)
     trade_date = db.Column(db.DateTime, default=get_default_date)
     is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)

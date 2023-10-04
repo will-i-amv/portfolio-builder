@@ -131,6 +131,7 @@ def add(watch_name: str) -> Response:
             ticker=add_item_form.ticker.data, 
             quantity=add_item_form.quantity.data,
             price=add_item_form.price.data, 
+            side=add_item_form.side.data,  
             trade_date=add_item_form.trade_date.data,
             comments=add_item_form.comments.data, 
             watchlist_id=watchlist.id
@@ -163,6 +164,7 @@ def update(watch_name: str, ticker: str) -> Response:
                 ticker=add_item_form.ticker.data, 
                 quantity=add_item_form.quantity.data,
                 price=add_item_form.price.data, 
+                side=add_item_form.side.data, 
                 trade_date=add_item_form.trade_date.data,
                 comments=add_item_form.comments.data,
                 watchlist_id=last_item.watchlist_id

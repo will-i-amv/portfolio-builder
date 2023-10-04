@@ -58,6 +58,11 @@ class AddItemForm(FlaskForm):
             v.NumberRange(min=0, max=100000)
         ]
     )
+    side = SelectField(
+        "Transaction Type",
+        choices=['buy', 'sell'],
+        validators=[v.InputRequired()]
+    )
     trade_date = DateTimeField("Trade Date", default=get_default_date)
     comments = TextAreaField(
         "Comments",
