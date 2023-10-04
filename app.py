@@ -1,4 +1,5 @@
 import datetime as dt
+
 from flask_migrate import Migrate
 
 from portfolio_builder import create_app, db
