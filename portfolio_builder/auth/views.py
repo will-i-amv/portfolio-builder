@@ -1,4 +1,6 @@
+from typing import Union
 from flask import Blueprint, flash, redirect, render_template, url_for
+from flask.wrappers import Response
 from flask_login import login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -11,7 +13,7 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @bp.route("/register", methods=("GET", "POST"))
-def register():
+def register() -> Union[str, Response]:
     form = RegistrationForm()
     if not form.validate_on_submit():
         return render_template("auth/register.html", title="Register", form=form)
@@ -27,7 +29,7 @@ def register():
 
 
 @bp.route("/login", methods=("GET", "POST"))
-def login():
+def login() -> Union[str, Response]:
     form = LoginForm()
     if not form.validate_on_submit():
         return render_template("auth/login.html", title="Log In", form=form)
@@ -45,7 +47,7 @@ def login():
 
 
 @bp.route('/logout')
-def logout():
+def logout() -> Response:
     logout_user()
     flash('You have been logged out.')
     return redirect(url_for('main.index'))

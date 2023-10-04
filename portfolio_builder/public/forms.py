@@ -25,7 +25,7 @@ class AddWatchlistForm(FlaskForm):
     )
     submit = SubmitField("Add")
 
-    def validate_name(self, name):
+    def validate_name(self, name: StringField) -> None:
         name_check = (
             Watchlist
             .query
@@ -66,7 +66,7 @@ class AddItemForm(FlaskForm):
     )
     submit = SubmitField("Add to Watchlist")
 
-    def validate_ticker(self, ticker):
+    def validate_ticker(self, ticker: StringField) -> None:
         ticker_db = (
             db
             .session

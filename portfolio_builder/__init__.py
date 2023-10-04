@@ -1,4 +1,5 @@
 import logging.config
+from typing import Dict, Any
 
 from flask import Flask
 from flask_bootstrap import Bootstrap
@@ -14,7 +15,7 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 
 
-def configure_logging():
+def configure_logging() -> None:
     logging.config.dictConfig(
         {
             "version": 1,
@@ -35,7 +36,7 @@ def configure_logging():
     )
 
 
-def create_app(config_overrides=None):
+def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
     configure_logging()  # should be configured before any access to app.logger
     app = Flask(__name__)
     app.config.from_object(Config)

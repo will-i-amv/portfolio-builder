@@ -1,6 +1,9 @@
+from typing import Any, Dict, List
+
 import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required
+from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, 
@@ -13,7 +16,11 @@ from portfolio_builder.public.portfolio import FifoAccounting
 bp = Blueprint('dashboard', __name__)
 
 
-def calc_portf_val_daily(ticker, df_prices, df_positions):
+def calc_portf_val_daily(
+    ticker: str, 
+    df_prices: pd.DataFrame, 
+    df_positions: pd.DataFrame
+) ->  pd.DataFrame:
     """
     Combines the position breakdown with the daily prices to calculate
     daily market value. The Daily market value is the positions quantity
@@ -37,7 +44,7 @@ def calc_portf_val_daily(ticker, df_prices, df_positions):
     return df_portf_val
 
 
-def get_portf_positions(watchlist_name):
+def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
     tickers = get_watch_tickers(filter=[
         Watchlist.name == watchlist_name
     ])
@@ -65,7 +72,7 @@ def get_portf_positions(watchlist_name):
     return portf_pos
 
 
-def get_portf_valuations(portf_pos):
+def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     df_portf_val = pd.DataFrame()
     for ticker, df_positions in portf_pos.items():
         prices = get_prices(ticker)
@@ -89,7 +96,7 @@ def get_portf_valuations(portf_pos):
     return df_portf_val
 
 
-def calc_portf_flows_adjusted(flows):
+def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
     """
     Using the Holding Period Return (HPR) methodology. Purchases of
     securities are accounted as fund inflows and the sale of securities are
@@ -115,7 +122,10 @@ def calc_portf_flows_adjusted(flows):
     return df_flows
 
 
-def calc_portf_hpr(df_portf_val, df_portf_flows):
+def calc_portf_hpr(
+    df_portf_val: pd.DataFrame, 
+    df_portf_flows: pd.DataFrame
+) -> List[tuple[Any, ...]]:
     """
     Where PortVal = Portfolio Value. The Formula for the Daily
     Holding Period Return (HPR) is calculated as follows:
@@ -164,7 +174,7 @@ def calc_portf_hpr(df_portf_val, df_portf_flows):
     return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_pie_chart(df_portf_val):
+def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
@@ -214,7 +224,7 @@ def get_pie_chart(df_portf_val):
         return list(df_final.itertuples(index=False))
 
 
-def get_bar_chart(df_portf_val):
+def get_bar_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
     """
     Returns a named tuple of the 5 largest positions by absolute exposure
     in descending order
@@ -238,7 +248,7 @@ def get_bar_chart(df_portf_val):
     return list(df_final.itertuples(index=False))
 
 
-def get_last_portf_position(portf_pos):
+def get_last_portf_position(portf_pos: Dict[str, pd.DataFrame]) -> List[tuple[Any, ...]]:
     last_portf_pos = []
     for ticker, df_positions in portf_pos.items():
         last_pos = list(
@@ -257,7 +267,7 @@ def get_last_portf_position(portf_pos):
 
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
-def index():
+def index() -> str:
     watch_names = get_all_watch_names()
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection')

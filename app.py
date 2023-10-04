@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Dict, Any
 
 from flask_migrate import Migrate
 
@@ -13,7 +14,7 @@ migrate = Migrate(app, db)
 
 
 @app.shell_context_processor
-def make_shell_context():
+def make_shell_context() -> Dict[str, Any]:
     return {
         "db": db,
         "User": User,
@@ -25,7 +26,7 @@ def make_shell_context():
 
 
 @app.cli.command()
-def init_db():
+def init_db() -> None:
     common_tech_stocks = [
         'META', 
         'GOOGL', 

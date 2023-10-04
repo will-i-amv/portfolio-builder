@@ -1,6 +1,8 @@
+import datetime as dt
 import random
 import time
 from io import StringIO
+from typing import Dict, List
 
 import pandas as pd
 import requests
@@ -20,7 +22,7 @@ EXCHANGES = [
 ]
 
 
-def get_securities_eodhd(api_key):
+def get_securities_eodhd(api_key: str) -> pd.DataFrame:
     df = pd.DataFrame()
     for exchange in EXCHANGES:
         url = (
@@ -49,7 +51,7 @@ def get_securities_eodhd(api_key):
     return df_cleaned
 
 
-def get_securities_tiingo(api_key):
+def get_securities_tiingo(api_key: str) -> pd.DataFrame:
     tiingo_client = TiingoClient({'session': True, 'api_key': api_key})
     df = pd.DataFrame(tiingo_client.list_stock_tickers())
     df_cleaned = (
@@ -68,7 +70,12 @@ def get_securities_tiingo(api_key):
     return df_cleaned
 
 
-def get_prices_tiingo(api_key, ticker_ids, start_date, end_date):
+def get_prices_tiingo(
+    api_key: str, 
+    ticker_ids: Dict[str, int], 
+    start_date: dt.date, 
+    end_date: dt.date
+) -> pd.DataFrame:
     tiingo_client = TiingoClient({'session': True, 'api_key': api_key})
     tickers = [ticker for ticker, _ in ticker_ids.items()]
     df = tiingo_client.get_dataframe(
@@ -93,7 +100,7 @@ def get_prices_tiingo(api_key, ticker_ids, start_date, end_date):
     return df_cleaned
 
 
-def load_securities():
+def load_securities() -> None:
     app = current_app._get_current_object()
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     API_KEY_EODHD = app.config['API_KEY_EODHD']
@@ -121,7 +128,11 @@ def load_securities():
     )
 
 
-def load_prices(tickers, start_date, end_date):
+def load_prices(
+    tickers: List[str], 
+    start_date: dt.date, 
+    end_date: dt.date
+) -> None:
     ticker_ids = dict(
         db
         .session

@@ -1,12 +1,15 @@
 import datetime as dt
+from typing import List
 
 from flask_login import current_user
 from sqlalchemy.sql import expression, func
+from sqlalchemy.engine.row import Row
+from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
 
 
-def get_default_date():
+def get_default_date() -> dt.datetime:
     trade_date = dt.datetime.utcnow()
     weekday = dt.date.isoweekday(trade_date)
     if weekday == 6: # Saturday
@@ -31,7 +34,7 @@ class Security(db.Model):
         passive_deletes=True
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<Security Name: {self.name}, " + 
             f"Ticker Name: {self.ticker}, " + 
@@ -54,7 +57,7 @@ class Price(db.Model):
         nullable=False
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<Date: {self.date}, " + 
             f"Ticker ID: {self.ticker_id}, " + 
@@ -77,7 +80,7 @@ class Watchlist(db.Model):
         passive_deletes=True
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"<Watchlist ID: {self.id}, Watchlist Name: {self.name}>")
 
 
@@ -98,11 +101,11 @@ class WatchlistItem(db.Model):
         nullable=False
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_prices(ticker):
+def get_prices(ticker: str) -> List[Row]:
     prices = (
         db
         .session
@@ -129,13 +132,13 @@ def _watchlist_items_query(filter):
     return query
 
 
-def get_watch_items(filter):
+def get_watch_items(filter: List[BinaryExpression]) -> List[Row]:
     query = _watchlist_items_query(filter)
     items = query.all()
     return items
 
 
-def get_watch_tickers(filter):
+def get_watch_tickers(filter: List[BinaryExpression]) -> List[str]:
     query = _watchlist_items_query(filter)
     tickers = (
         query
@@ -147,7 +150,7 @@ def get_watch_tickers(filter):
     return [item.ticker for item in tickers]
 
 
-def get_watch_trade_history(filter):
+def get_watch_trade_history(filter: List[BinaryExpression]) -> List[Row]:
     query = _watchlist_items_query(filter)
     history = (
         query
@@ -163,7 +166,7 @@ def get_watch_trade_history(filter):
     return history
 
 
-def get_watch_flows(filter):
+def get_watch_flows(filter: List[BinaryExpression]) -> List[Row]:
     query = _watchlist_items_query(filter)
     flows = (
         query
@@ -178,7 +181,7 @@ def get_watch_flows(filter):
     return flows
 
 
-def get_all_watch_names():
+def get_all_watch_names() -> List[str]:
     watchlists = (
         db
         .session
