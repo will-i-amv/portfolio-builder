@@ -1,4 +1,4 @@
-"""6_remove_sector_column
+"""7_remove_sector_column
 
 Revision ID: d6270e38275d
 Revises: 14581731c7bf
