@@ -1,7 +1,9 @@
+import datetime as dt
 import logging.config
 from typing import Dict, Any
 
 from flask import Flask
+from flask_apscheduler import APScheduler
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -13,6 +15,7 @@ db = SQLAlchemy()
 bootstrap = Bootstrap()
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
+scheduler = APScheduler()
 
 
 def configure_logging() -> None:
@@ -45,6 +48,7 @@ def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
     db.init_app(app)
     bootstrap.init_app(app)
     login_manager.init_app(app)
+    scheduler.init_app(app)
     
     if config_overrides is not None:
         app.config.from_mapping(config_overrides)
