@@ -111,8 +111,8 @@ def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
         .DataFrame(flows, columns=["date", "flows"])
         .astype({'date': 'datetime64[ns]'})
         .assign(
-            cash=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
-            inflows=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs(), # This should also be .cumsum()
+            inflows=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
+            cash=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs().cumsum(),
         )
         .set_index("date")
         .assign(cash=lambda x: x['cash'].ffill())

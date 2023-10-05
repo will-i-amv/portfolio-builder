@@ -2,7 +2,7 @@ import datetime as dt
 from typing import List
 
 from flask_login import current_user
-from sqlalchemy.sql import expression, func
+from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -172,8 +172,14 @@ def get_watch_flows(filter: List[BinaryExpression]) -> List[Row]:
         query
         .group_by(func.date(WatchlistItem.trade_date))
         .with_entities(
-            func.date(WatchlistItem.trade_date).label('index'),
-            func.sum(WatchlistItem.quantity * WatchlistItem.price * (-1)).label('flows')
+            func.date(WatchlistItem.trade_date).label('date'),
+            func.sum(
+                WatchlistItem.quantity * WatchlistItem.price * case(
+                    (WatchlistItem.side == 'buy', 1),
+                    (WatchlistItem.side == 'sell', (-1)),
+                )
+            )
+            .label('flows')
         )
         .order_by(func.date(WatchlistItem.trade_date))
         .all()
