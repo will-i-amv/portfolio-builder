@@ -3,9 +3,8 @@ import datetime as dt
 from flask import Blueprint, request, flash, redirect, render_template, url_for
 from flask.wrappers import Response
 from flask_login import current_user, login_required
-from sqlalchemy.orm import aliased
 
-from portfolio_builder import db
+from portfolio_builder import db, scheduler
 from portfolio_builder.public.forms import (
     AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
@@ -13,27 +12,10 @@ from portfolio_builder.public.models import (
     Price, Security, Watchlist, WatchlistItem,
     get_all_watch_names, get_watch_items
 )
-from portfolio_builder.tasks import load_prices
+from portfolio_builder.tasks import load_prices_ticker
 
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
-
-
-def check_prices(ticker: str) -> None:
-    price = aliased(Price)
-    sec = aliased(Security)
-    first_price = (
-        db
-        .session
-        .query(price)
-        .join(sec, onclause=(price.ticker_id==sec.id))
-        .filter(sec.ticker == ticker)
-        .first()
-    )
-    if not first_price:
-        end_date = dt.date.today() - dt.timedelta(days=1)
-        start_date = end_date - dt.timedelta(days=100)
-        load_prices([ticker], start_date, end_date)
 
 
 @bp.route("/", methods=['GET', 'POST'])
@@ -138,8 +120,12 @@ def add(watch_name: str) -> Response:
         )
         db.session.add(item)
         db.session.commit()
-        check_prices(item.ticker)
         flash(f"The ticker '{item.ticker}' has been added to the watchlist.")
+        scheduler.add_job(
+            id='add_db_last100day_prices',
+            func=load_prices_ticker,
+            args=[item.ticker],
+        ) # task executes only once, immediately.
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()

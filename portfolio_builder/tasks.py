@@ -9,8 +9,10 @@ import requests
 from flask import current_app
 from tiingo import TiingoClient
 
-from portfolio_builder import db
-from portfolio_builder.public.models import Security
+from portfolio_builder import db, scheduler
+from portfolio_builder.public.models import (
+    Price, Security, Watchlist, WatchlistItem
+)
 
 
 EXCHANGES = [
@@ -151,3 +153,40 @@ def load_prices(
             if_exists="append",
             index=False
         )
+
+
+def load_prices_all_tickers() -> None:
+    with scheduler.app.app_context():
+        all_tickers = (
+            db
+            .session
+            .query(WatchlistItem)
+            .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+            .with_entities(WatchlistItem.ticker)
+            .distinct(WatchlistItem.ticker)
+            .order_by(WatchlistItem.ticker)
+            .all()
+        )
+        all_tickers = [
+            item.ticker for item in all_tickers
+        ]
+        if all_tickers:
+            end_date = dt.date.today() - dt.timedelta(days=1)
+            start_date = end_date
+            load_prices(all_tickers, start_date, end_date)
+
+
+def load_prices_ticker(ticker: str) -> None:
+    with scheduler.app.app_context():
+        first_price = (
+            db
+            .session
+            .query(Price)
+            .join(Security, onclause=(Price.ticker_id==Security.id))
+            .filter(Security.ticker == ticker)
+            .first()
+        )
+        if not first_price:
+            end_date = dt.date.today() - dt.timedelta(days=1)
+            start_date = end_date - dt.timedelta(days=100)
+            load_prices([ticker], start_date, end_date)

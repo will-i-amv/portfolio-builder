@@ -62,4 +62,17 @@ def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
     app.register_blueprint(main_bp)
     app.register_blueprint(watchlist_bp)
 
+    from portfolio_builder.tasks import load_prices_all_tickers
+    scheduler.add_job(
+        id='update_db_last_prices',
+        func=load_prices_all_tickers, 
+        trigger='interval',
+        start_date=dt.datetime.combine(
+            dt.date.today() + dt.timedelta(days=1), 
+            dt.time(1, 0)
+        ),
+        days=1, 
+    ) # task executes periodically, every day at 1am, starting tomorrow.
+    scheduler.start()
+
     return app
