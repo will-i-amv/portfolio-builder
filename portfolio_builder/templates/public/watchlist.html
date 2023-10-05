@@ -153,10 +153,10 @@
         <table class="all-trades" id="all-trades">
             <thead>
                 <tr>
-                    <th>Order ID</th>
                     <th>Ticker</th>
                     <th>Quantity</th>
                     <th>Price</th>
+                    <th>Side</th>
                     <th>Trade Date</th>
                     <th>Comments</th>
                     <th>Actions</th>
@@ -165,10 +165,10 @@
             <tbody>
                 {% for item in watch_items %}
                     <tr class="watchlist-rows">
-                        <td class="c1">{{ item.id }}</td>
-                        <td class="c2">{{ item.ticker }}</td>
-                        <td class="c3">{{ item.quantity }}</td>
-                        <td class="c4">{{ item.price }}</td>
+                        <td class="c1">{{ item.ticker }}</td>
+                        <td class="c2">{{ item.quantity }}</td>
+                        <td class="c3">{{ item.price }}</td>
+                        <td class="c4">{{ item.side }}</td>
                         <td class="c5">{{ item.trade_date.strftime('%d-%m-%Y') }}</td>
                         <td>{{ item.comments }}</td>
                         <td class="edit-trade">
