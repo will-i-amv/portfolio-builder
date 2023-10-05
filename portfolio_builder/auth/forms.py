@@ -28,10 +28,10 @@ class RegistrationForm(FlaskForm):
         validators=[
             DataRequired(),
             Length(min=8, max=32),
-            EqualTo("password2", message="Passwords must match")
+            EqualTo("confirm", message="Passwords must match")
         ]
     )
-    password2 = PasswordField('Confirm password', validators=[DataRequired()])
+    confirm = PasswordField('Confirm password', validators=[DataRequired()])
     submit = SubmitField("Register")
 
     def validate_username(self, username: StringField) -> None:
