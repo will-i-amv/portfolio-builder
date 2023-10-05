@@ -1,5 +1,8 @@
+import datetime as dt
+
 from flask_login import current_user
 from flask_wtf import FlaskForm
+from sqlalchemy.sql import func, case
 from wtforms import validators as v
 from wtforms import (
     DateTimeField, DecimalField, HiddenField, IntegerField, 
@@ -8,8 +11,8 @@ from wtforms import (
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_default_date, Security, Watchlist, 
-    WatchlistItem
+    _watchlist_items_query, get_default_date, 
+    Security, Watchlist, WatchlistItem
 )
 
 
@@ -82,3 +85,70 @@ class AddItemForm(FlaskForm):
             raise v.ValidationError(
                 f'The ticker "{ticker.data}" is unavailable.'
             )
+
+    def validate_trade_date(self, trade_date: DateTimeField):
+        """
+        The trade date of a ticker can't be in the future, 
+        on weekends, or before the last trade, if it exists.
+        """
+        input_trade_date = trade_date.data
+        try:
+            day_of_week = dt.date.isoweekday(input_trade_date)
+        except TypeError:
+            raise v.ValidationError("The trade date format is invalid.")
+        curr_date = get_default_date()
+        if day_of_week == 6 or day_of_week == 7:
+            raise v.ValidationError(
+                "The trade date cannot fall on weekends."
+            )
+        elif input_trade_date > curr_date:
+            raise v.ValidationError(
+                "The trade date cannot be a date in the future."
+            )
+        last_trade_date = (
+            _watchlist_items_query(filter=[
+                Watchlist.name == self.watch_name.data,
+                WatchlistItem.ticker == self.ticker.data,
+            ])
+            .with_entities(
+                WatchlistItem.trade_date
+            )
+            .order_by(WatchlistItem.trade_date.desc())
+            .first()
+        )
+        if last_trade_date:
+            last_trade_date = next(iter(last_trade_date), '')
+            if input_trade_date < last_trade_date:
+                raise v.ValidationError(
+                    f"The last trade date for ticker '{self.ticker.data}' " + 
+                    "is {last_trade_date}, the new date can't be before that."
+                )
+
+    def validate_side(self, side: SelectField) -> None:
+        input_side = side.data
+        total_amount = self.price.data * self.quantity.data
+        if input_side == 'sell':
+            net_assets = (
+                _watchlist_items_query(filter=[
+                    Watchlist.name == self.watch_name.data,
+                    WatchlistItem.ticker == self.ticker.data,
+                ])
+                .with_entities(
+                    func.sum(
+                        WatchlistItem.quantity * WatchlistItem.price * case(
+                            (WatchlistItem.side == 'buy', 1),
+                            (WatchlistItem.side == 'sell', (-1)),
+                        )
+                    )
+                    .label('flows')
+                )
+                .first()
+            )
+            net_assets = next(iter(net_assets), '')
+            if not net_assets:
+                raise v.ValidationError(f"You can't sell if your portfolio is empty.")
+            elif total_amount > net_assets: 
+                raise v.ValidationError(
+                    f"You tried to sell USD {total_amount} worth of '{self.ticker.data}'," + 
+                    f"but you only have USD {net_assets} in total." 
+                )
