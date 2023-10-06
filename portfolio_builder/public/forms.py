@@ -32,7 +32,7 @@ class AddWatchlistForm(FlaskForm):
         name_check = (
             Watchlist
             .query
-            .filter_by(user_id=current_user.id, name=name.data)
+            .filter_by(user_id=current_user.id, name=name.data) # type: ignore
             .first()
         )
         if name_check is not None:

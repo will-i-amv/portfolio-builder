@@ -57,8 +57,8 @@ def add_watchlist() -> Response:
     if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
         new_watchlist = Watchlist(
+            user_id=current_user.id, # type: ignore
             name=watchlist_name, 
-            user_id=current_user.id
         )
         db.session.add(new_watchlist)
         db.session.commit()
@@ -82,7 +82,7 @@ def delete_watchlist() -> Response:
             .session
             .query(Watchlist)
             .filter(
-                Watchlist.user_id==current_user.id,
+                Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name==watchlist_name
             )
             .first()
@@ -104,7 +104,7 @@ def add(watch_name: str) -> Response:
             .session
             .query(Watchlist)
             .filter(
-                Watchlist.user_id==current_user.id,
+                Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name==watch_name
             )
             .first()

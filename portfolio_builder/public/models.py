@@ -125,7 +125,7 @@ def _watchlist_items_query(filter):
         .query(WatchlistItem)
         .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
         .filter(
-            Watchlist.user_id == current_user.id,
+            Watchlist.user_id == current_user.id,# type: ignore
             *filter
         )
     )
@@ -193,7 +193,7 @@ def get_all_watch_names() -> List[str]:
         .session
         .query(Watchlist)
         .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id)
+        .filter_by(user_id=current_user.id) # type: ignore
         .order_by(Watchlist.id)
         .all()
     )
