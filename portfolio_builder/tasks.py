@@ -103,7 +103,7 @@ def get_prices_tiingo(
 
 
 def load_securities() -> None:
-    app = current_app._get_current_object()
+    app = current_app._get_current_object() # type: ignore
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     API_KEY_EODHD = app.config['API_KEY_EODHD']
     if not (API_KEY_TIINGO and API_KEY_EODHD):
@@ -144,7 +144,7 @@ def load_prices(
         .all()
     )
     if ticker_ids:
-        app = current_app._get_current_object()
+        app = current_app._get_current_object() # type: ignore
         API_KEY_TIINGO = app.config['API_KEY_TIINGO']
         df = get_prices_tiingo(API_KEY_TIINGO, ticker_ids, start_date, end_date)
         df.to_sql(
@@ -156,7 +156,7 @@ def load_prices(
 
 
 def load_prices_all_tickers() -> None:
-    with scheduler.app.app_context():
+    with scheduler.app.app_context(): # type: ignore
         all_tickers = (
             db
             .session
@@ -177,7 +177,7 @@ def load_prices_all_tickers() -> None:
 
 
 def load_prices_ticker(ticker: str) -> None:
-    with scheduler.app.app_context():
+    with scheduler.app.app_context(): # type: ignore
         first_price = (
             db
             .session

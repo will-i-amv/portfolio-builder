@@ -1,7 +1,7 @@
 import datetime as dt
 
 from flask import Blueprint, request, flash, redirect, render_template, url_for
-from flask.wrappers import Response
+from werkzeug.wrappers.response import Response
 from flask_login import current_user, login_required
 
 from portfolio_builder import db, scheduler
@@ -10,7 +10,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Price, Security, Watchlist, WatchlistItem,
-    get_all_watch_names, get_watch_items
+    get_all_watch_names, get_watchlists, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -57,8 +57,8 @@ def add_watchlist() -> Response:
     if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
         new_watchlist = Watchlist(
+            user_id=current_user.id, # type: ignore
             name=watchlist_name, 
-            user_id=current_user.id
         )
         db.session.add(new_watchlist)
         db.session.commit()
@@ -76,21 +76,13 @@ def delete_watchlist() -> Response:
     if not request.method == "POST":
         return redirect(url_for('watchlist.index'))
     else:
-        watchlist_name = request.form.get('watchlist_group_removed')
-        watchlist = (
-            db
-            .session
-            .query(Watchlist)
-            .filter(
-                Watchlist.user_id==current_user.id,
-                Watchlist.name==watchlist_name
-            )
-            .first()
-        )
-        if watchlist:
+        watch_name = request.form.get('watchlist_group_removed')
+        watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
+        watchlist = next(iter(watchlists), Watchlist())
+        if watchlist.id:
             db.session.delete(watchlist)
             db.session.commit()
-            flash(f"The watchlist '{watchlist_name}' has been deleted.")
+            flash(f"The watchlist '{watch_name}' has been deleted.")
         return redirect(url_for('watchlist.index'))
 
 
@@ -99,33 +91,26 @@ def delete_watchlist() -> Response:
 def add(watch_name: str) -> Response:
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        watchlist = (
-            db
-            .session
-            .query(Watchlist)
-            .filter(
-                Watchlist.user_id==current_user.id,
-                Watchlist.name==watch_name
+        watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
+        watchlist = next(iter(watchlists), Watchlist())
+        if watchlist.id:
+            item = WatchlistItem(
+                ticker=add_item_form.ticker.data, 
+                quantity=add_item_form.quantity.data,
+                price=add_item_form.price.data, 
+                side=add_item_form.side.data,  
+                trade_date=add_item_form.trade_date.data,
+                comments=add_item_form.comments.data, 
+                watchlist_id=watchlist.id
             )
-            .first()
-        )    
-        item = WatchlistItem(
-            ticker=add_item_form.ticker.data, 
-            quantity=add_item_form.quantity.data,
-            price=add_item_form.price.data, 
-            side=add_item_form.side.data,  
-            trade_date=add_item_form.trade_date.data,
-            comments=add_item_form.comments.data, 
-            watchlist_id=watchlist.id
-        )
-        db.session.add(item)
-        db.session.commit()
-        flash(f"The ticker '{item.ticker}' has been added to the watchlist.")
-        scheduler.add_job(
-            id='add_db_last100day_prices',
-            func=load_prices_ticker,
-            args=[item.ticker],
-        ) # task executes only once, immediately.
+            db.session.add(item)
+            db.session.commit()
+            flash(f"The ticker '{item.ticker}' has been added to the watchlist.")
+            scheduler.add_job(
+                id='add_db_last100day_prices',
+                func=load_prices_ticker,
+                args=[item.ticker],
+            ) # task executes only once, immediately.
     elif add_item_form.errors:
         for error_name, error_desc in add_item_form.errors.items():
             error_name = error_name.title()
@@ -138,13 +123,13 @@ def add(watch_name: str) -> Response:
 def update(watch_name: str, ticker: str) -> Response:
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        last_item = get_watch_items(filter=[
+        last_items = get_watch_items(filter=[
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
         ])
-        last_item = next(iter(last_item), '')
-        if last_item:
+        last_item = next(iter(last_items), WatchlistItem())
+        if last_item.id:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
                 ticker=add_item_form.ticker.data, 
@@ -176,5 +161,5 @@ def delete(watch_name: str, ticker: str) -> Response:
         for item in items:
             db.session.delete(item)
             db.session.commit()
-        flash(f"The ticker '{item.ticker}' has been deleted from the watchlist.")
+        flash(f"The ticker '{ticker}' has been deleted from the watchlist.")
     return redirect(url_for('watchlist.index'))

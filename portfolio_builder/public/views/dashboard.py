@@ -270,7 +270,7 @@ def get_last_portf_position(portf_pos: Dict[str, pd.DataFrame]) -> List[tuple[An
 def index() -> str:
     watch_names = get_all_watch_names()
     if request.method == 'POST':
-        curr_watch_name = request.form.get('watchlist_group_selection')
+        curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
         curr_watch_name = next(iter(watch_names), '')
     portf_pos = get_portf_positions(curr_watch_name)

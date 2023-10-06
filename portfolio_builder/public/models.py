@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import List
+from typing import Any, List, Tuple
 
 from flask_login import current_user
 from sqlalchemy.sql import expression, func, case
@@ -105,7 +105,7 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_prices(ticker: str) -> List[Row]:
+def get_prices(ticker: str) -> List[Price]:
     prices = (
         db
         .session
@@ -125,14 +125,14 @@ def _watchlist_items_query(filter):
         .query(WatchlistItem)
         .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
         .filter(
-            Watchlist.user_id == current_user.id,
+            Watchlist.user_id == current_user.id,# type: ignore
             *filter
         )
     )
     return query
 
 
-def get_watch_items(filter: List[BinaryExpression]) -> List[Row]:
+def get_watch_items(filter: List[BinaryExpression]) -> List[WatchlistItem]:
     query = _watchlist_items_query(filter)
     items = query.all()
     return items
@@ -150,7 +150,7 @@ def get_watch_tickers(filter: List[BinaryExpression]) -> List[str]:
     return [item.ticker for item in tickers]
 
 
-def get_watch_trade_history(filter: List[BinaryExpression]) -> List[Row]:
+def get_watch_trade_history(filter: List[BinaryExpression]) -> List[WatchlistItem]:
     query = _watchlist_items_query(filter)
     history = (
         query
@@ -166,7 +166,7 @@ def get_watch_trade_history(filter: List[BinaryExpression]) -> List[Row]:
     return history
 
 
-def get_watch_flows(filter: List[BinaryExpression]) -> List[Row]:
+def get_watch_flows(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]]:
     query = _watchlist_items_query(filter)
     flows = (
         query
@@ -193,8 +193,23 @@ def get_all_watch_names() -> List[str]:
         .session
         .query(Watchlist)
         .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id)
+        .filter_by(user_id=current_user.id) # type: ignore
         .order_by(Watchlist.id)
         .all()
     )
     return [item[0] for item in watchlists]
+
+
+def get_watchlists(filter: List[BinaryExpression]) -> List[Watchlist]:
+    watchlists = (
+        db
+        .session
+        .query(Watchlist)
+        .filter(
+            Watchlist.user_id==current_user.id, # type: ignore
+            *filter
+        )
+        .order_by(Watchlist.id)
+        .all()
+    )    
+    return watchlists
