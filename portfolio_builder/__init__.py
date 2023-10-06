@@ -14,7 +14,7 @@ from portfolio_builder.settings import Config
 db = SQLAlchemy()
 bootstrap = Bootstrap()
 login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
+login_manager.login_view = 'auth.login' # type: ignore
 scheduler = APScheduler()
 
 
