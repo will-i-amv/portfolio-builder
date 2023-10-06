@@ -176,5 +176,5 @@ def delete(watch_name: str, ticker: str) -> Response:
         for item in items:
             db.session.delete(item)
             db.session.commit()
-        flash(f"The ticker '{item.ticker}' has been deleted from the watchlist.")
+        flash(f"The ticker '{ticker}' has been deleted from the watchlist.")
     return redirect(url_for('watchlist.index'))
