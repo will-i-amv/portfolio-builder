@@ -24,3 +24,6 @@ class Config:
         "Main": (f'{DB_URL}/main'),
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Flask-APScheduler Configurations
+    SCHEDULER_API_ENABLED = True

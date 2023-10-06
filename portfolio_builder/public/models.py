@@ -2,7 +2,7 @@ import datetime as dt
 from typing import List
 
 from flask_login import current_user
-from sqlalchemy.sql import expression, func
+from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -87,10 +87,10 @@ class Watchlist(db.Model):
 class WatchlistItem(db.Model):
     __tablename__ = "watchlist_items"
     id = db.Column(db.Integer, primary_key=True, index=True)
-    watchlist = db.Column(db.String(25), nullable=False)
     ticker = db.Column(db.String(20), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
+    side = db.Column(db.String(5), nullable=False)
     trade_date = db.Column(db.DateTime, default=get_default_date)
     is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
@@ -172,8 +172,14 @@ def get_watch_flows(filter: List[BinaryExpression]) -> List[Row]:
         query
         .group_by(func.date(WatchlistItem.trade_date))
         .with_entities(
-            func.date(WatchlistItem.trade_date).label('index'),
-            func.sum(WatchlistItem.quantity * WatchlistItem.price * (-1)).label('flows')
+            func.date(WatchlistItem.trade_date).label('date'),
+            func.sum(
+                WatchlistItem.quantity * WatchlistItem.price * case(
+                    (WatchlistItem.side == 'buy', 1),
+                    (WatchlistItem.side == 'sell', (-1)),
+                )
+            )
+            .label('flows')
         )
         .order_by(func.date(WatchlistItem.trade_date))
         .all()
