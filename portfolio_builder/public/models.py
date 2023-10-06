@@ -198,3 +198,18 @@ def get_all_watch_names() -> List[str]:
         .all()
     )
     return [item[0] for item in watchlists]
+
+
+def get_watchlists(filter: List[BinaryExpression]) -> List[Watchlist]:
+    watchlists = (
+        db
+        .session
+        .query(Watchlist)
+        .filter(
+            Watchlist.user_id==current_user.id, # type: ignore
+            *filter
+        )
+        .order_by(Watchlist.id)
+        .all()
+    )    
+    return watchlists
