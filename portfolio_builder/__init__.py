@@ -39,7 +39,7 @@ def configure_logging() -> None:
     )
 
 
-def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
+def create_app(config_overrides: Dict[str, Any] = {}) -> Flask:
     configure_logging()  # should be configured before any access to app.logger
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -50,7 +50,7 @@ def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
     login_manager.init_app(app)
     scheduler.init_app(app)
     
-    if config_overrides is not None:
+    if config_overrides:
         app.config.from_mapping(config_overrides)
 
     from portfolio_builder.public.views.dashboard import bp as dashboard_bp
