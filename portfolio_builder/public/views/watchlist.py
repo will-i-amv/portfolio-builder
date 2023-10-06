@@ -123,13 +123,13 @@ def add(watch_name: str) -> Response:
 def update(watch_name: str, ticker: str) -> Response:
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        last_item = get_watch_items(filter=[
+        last_items = get_watch_items(filter=[
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
         ])
-        last_item = next(iter(last_item), '')
-        if last_item:
+        last_item = next(iter(last_items), WatchlistItem())
+        if last_item.id:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
                 ticker=add_item_form.ticker.data, 
