@@ -43,11 +43,11 @@ def login() -> Union[str, Response]:
             return redirect(url_for("auth.login"))
         else:
             login_user(user, remember=form.remember_me.data)
-            return redirect(url_for("watchlist.index"))
+            return redirect(url_for("dashboard.index"))
 
 
 @bp.route('/logout')
 def logout() -> Response:
     logout_user()
     flash('You have been logged out.')
-    return redirect(url_for('main.index'))
+    return redirect(url_for('dashboard.index'))

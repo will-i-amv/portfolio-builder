@@ -54,12 +54,10 @@ def create_app(config_overrides: Dict[str, Any] = None) -> Flask:
         app.config.from_mapping(config_overrides)
 
     from portfolio_builder.public.views.dashboard import bp as dashboard_bp
-    from portfolio_builder.public.views.main import bp as main_bp
     from portfolio_builder.public.views.watchlist import bp as watchlist_bp
     from portfolio_builder.auth.views import bp as auth_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
-    app.register_blueprint(main_bp)
     app.register_blueprint(watchlist_bp)
 
     from portfolio_builder.tasks import load_prices_all_tickers
