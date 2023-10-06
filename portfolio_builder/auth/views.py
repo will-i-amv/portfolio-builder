@@ -1,6 +1,6 @@
 from typing import Union
 from flask import Blueprint, flash, redirect, render_template, url_for
-from flask.wrappers import Response
+from werkzeug.wrappers.response import Response
 from flask_login import login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 

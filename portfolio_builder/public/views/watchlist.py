@@ -1,7 +1,7 @@
 import datetime as dt
 
 from flask import Blueprint, request, flash, redirect, render_template, url_for
-from flask.wrappers import Response
+from werkzeug.wrappers.response import Response
 from flask_login import current_user, login_required
 
 from portfolio_builder import db, scheduler
