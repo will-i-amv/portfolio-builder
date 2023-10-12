@@ -188,25 +188,16 @@ def get_watch_flows(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]
     return flows
 
 
-def get_all_watch_names() -> List[str]:
-    watchlists = (
-        db
-        .session
-        .query(Watchlist)
-        .with_entities(Watchlist.name)
-        .filter_by(user_id=current_user.id) # type: ignore
-        .order_by(Watchlist.id)
-        .all()
-    )
-    return [item[0] for item in watchlists]
-
-
-def get_watchlists(filter: List[BinaryExpression]) -> List[Watchlist]:
+def get_watchlists(
+    filter: List[BinaryExpression],
+    columns: List[Any] = Watchlist
+) -> List[Watchlist]:
     watchlists = (
         db
         .session
         .query(Watchlist)
         .filter(*filter)
+        .with_entities(*columns)
         .order_by(Watchlist.id)
         .all()
     )    

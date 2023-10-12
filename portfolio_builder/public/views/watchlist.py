@@ -11,7 +11,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
-    get_securities, get_all_watch_names, get_watchlists, get_watch_items
+    get_securities, get_watchlists, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -38,7 +38,13 @@ def index() -> str:
     Returns:
         str: A rendered HTML template with the necessary data.
     """
-    watch_names = get_all_watch_names()
+    watch_names = [
+        item.name
+        for item in get_watchlists(
+            filter=[Watchlist.user_id==current_user.id], # type: ignore 
+            columns=[Watchlist.name]
+        )
+    ]
     select_form = SelectWatchlistForm()
     add_watchlist_form = AddWatchlistForm()
     add_item_form = AddItemForm()

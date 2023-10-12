@@ -7,8 +7,8 @@ from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, 
-    get_prices, get_watch_tickers, get_watch_trade_history, 
-    get_watch_flows, get_all_watch_names
+    get_prices, get_watchlists, get_watch_tickers, get_watch_trade_history, 
+    get_watch_flows
 )
 from portfolio_builder.public.portfolio import FifoAccounting
 
@@ -270,7 +270,13 @@ def get_last_portf_position(portf_pos: Dict[str, pd.DataFrame]) -> List[tuple[An
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index() -> str:
-    watch_names = get_all_watch_names()
+    watch_names = [
+        item.name
+        for item in get_watchlists(
+            filter=[Watchlist.user_id==current_user.id], # type: ignore 
+            columns=[Watchlist.name]
+        )
+    ]
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
