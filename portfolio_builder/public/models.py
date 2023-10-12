@@ -4,6 +4,7 @@ from typing import Any, List, Tuple
 from flask_login import current_user
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
@@ -133,38 +134,19 @@ def _watchlist_items_query(filter):
     return query
 
 
-def get_watch_items(filter: List[BinaryExpression]) -> List[WatchlistItem]:
+def get_watch_items(
+    filter: List[BinaryExpression],
+    select: List[Any] = [WatchlistItem],
+    orderby: List[Any] = [WatchlistItem.id]
+) -> List[WatchlistItem]:
     query = _watchlist_items_query(filter)
-    items = query.all()
+    items = (
+        query
+        .with_entities(*select)
+        .order_by(*orderby)
+        .all()
+    )
     return items
-
-
-def get_watch_tickers(filter: List[BinaryExpression]) -> List[str]:
-    query = _watchlist_items_query(filter)
-    tickers = (
-        query
-        .with_entities(WatchlistItem.ticker)
-        .distinct(WatchlistItem.ticker)
-        .order_by(WatchlistItem.ticker)
-        .all()
-    )
-    return [item.ticker for item in tickers]
-
-
-def get_watch_trade_history(filter: List[BinaryExpression]) -> List[WatchlistItem]:
-    query = _watchlist_items_query(filter)
-    history = (
-        query
-        .with_entities(
-            WatchlistItem.ticker,
-            WatchlistItem.quantity,
-            WatchlistItem.price,
-            func.date(WatchlistItem.trade_date).label("date")
-        )
-        .order_by(WatchlistItem.trade_date)
-        .all()
-    )
-    return history
 
 
 def get_watch_flows(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]]:

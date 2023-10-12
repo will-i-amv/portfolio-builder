@@ -3,12 +3,12 @@ from typing import Any, Dict, List
 import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required, current_user
+from sqlalchemy.sql import func
 from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, 
-    get_prices, get_watchlists, get_watch_tickers, get_watch_trade_history, 
-    get_watch_flows
+    get_prices, get_watchlists, get_watch_items, get_watch_flows
 )
 from portfolio_builder.public.portfolio import FifoAccounting
 
@@ -45,17 +45,33 @@ def calc_portf_val_daily(
 
 
 def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
-    tickers = get_watch_tickers(filter=[
-        Watchlist.user_id==current_user.id, # type: ignore
-        Watchlist.name == watchlist_name
+    tickers = set([
+        item.ticker 
+        for item in get_watch_items(
+            filter=[
+                Watchlist.user_id==1, # type: ignore
+                Watchlist.name == 'Technology'
+            ],
+            select=[WatchlistItem.ticker],
+            orderby=[WatchlistItem.ticker]
+        )
     ])
     portf_pos = {}
     for ticker in tickers:
-        trade_history = get_watch_trade_history(filter=[
-            Watchlist.user_id==current_user.id, # type: ignore
-            Watchlist.name == watchlist_name,
-            WatchlistItem.ticker == ticker,
-        ])
+        trade_history = get_watch_items(
+            filter=[
+                Watchlist.user_id==current_user.id, # type: ignore
+                Watchlist.name == watchlist_name,
+                WatchlistItem.ticker == ticker,
+            ],
+            select=[
+                WatchlistItem.ticker,
+                WatchlistItem.quantity,
+                WatchlistItem.price,
+                WatchlistItem.trade_date.label("date")
+            ],
+            orderby=[WatchlistItem.trade_date]
+        )
         fifo_accounting = FifoAccounting(trade_history)
         fifo_accounting.calc_fifo()
         df_positions = (
