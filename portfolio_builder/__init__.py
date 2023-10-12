@@ -8,7 +8,7 @@ from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
-from portfolio_builder.settings import Config
+from portfolio_builder.settings import settings
 
 
 db = SQLAlchemy()
@@ -39,10 +39,10 @@ def configure_logging() -> None:
     )
 
 
-def create_app(config_overrides: Dict[str, Any] = {}) -> Flask:
+def create_app(settings_name: str) -> Flask:
     configure_logging()  # should be configured before any access to app.logger
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(settings[settings_name])
     app.config.from_prefixed_env()
 
     db.init_app(app)
@@ -50,9 +50,6 @@ def create_app(config_overrides: Dict[str, Any] = {}) -> Flask:
     login_manager.init_app(app)
     scheduler.init_app(app)
     
-    if config_overrides:
-        app.config.from_mapping(config_overrides)
-
     from portfolio_builder.public.views.dashboard import bp as dashboard_bp
     from portfolio_builder.public.views.watchlist import bp as watchlist_bp
     from portfolio_builder.auth.views import bp as auth_bp

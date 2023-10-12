@@ -9,7 +9,7 @@ from portfolio_builder.public.models import Security, Price, Watchlist, Watchlis
 from portfolio_builder.tasks import load_securities, load_prices
 
 
-app = create_app()
+app = create_app(settings_name='production')
 migrate = Migrate(app, db)
 
 
