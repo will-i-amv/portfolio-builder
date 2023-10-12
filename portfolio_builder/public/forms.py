@@ -11,7 +11,7 @@ from wtforms import (
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    _watchlist_items_query, get_default_date, 
+    _filter_watchlist_items, get_default_date, 
     Security, Watchlist, WatchlistItem
 )
 
@@ -106,7 +106,7 @@ class AddItemForm(FlaskForm):
                 "The trade date cannot be a date in the future."
             )
         last_trade_date = (
-            _watchlist_items_query(filter=[
+            _filter_watchlist_items(filter=[
                 Watchlist.name == self.watch_name.data,
                 WatchlistItem.ticker == self.ticker.data,
             ])
@@ -129,7 +129,7 @@ class AddItemForm(FlaskForm):
         total_amount = self.price.data * self.quantity.data
         if input_side == 'sell':
             net_assets = (
-                _watchlist_items_query(filter=[
+                _filter_watchlist_items(filter=[
                     Watchlist.name == self.watch_name.data,
                     WatchlistItem.ticker == self.ticker.data,
                 ])

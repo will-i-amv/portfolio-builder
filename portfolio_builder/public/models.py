@@ -1,10 +1,8 @@
 import datetime as dt
 from typing import Any, List, Tuple
 
-from flask_login import current_user
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
@@ -123,7 +121,7 @@ def get_prices(ticker: str) -> List[Price]:
     return prices
 
 
-def _watchlist_items_query(filter):
+def _filter_watchlist_items(filter):
     query = (
         db
         .session
@@ -139,7 +137,7 @@ def get_watch_items(
     select: List[Any] = [WatchlistItem],
     orderby: List[Any] = [WatchlistItem.id]
 ) -> List[WatchlistItem]:
-    query = _watchlist_items_query(filter)
+    query = _filter_watchlist_items(filter)
     items = (
         query
         .with_entities(*select)
@@ -149,9 +147,9 @@ def get_watch_items(
     return items
 
 
-def get_watch_flows(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]]:
-    query = _watchlist_items_query(filter)
-    flows = (
+def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]]:
+    query = _filter_watchlist_items(filter)
+    grouped_items = (
         query
         .group_by(func.date(WatchlistItem.trade_date))
         .with_entities(
@@ -167,7 +165,7 @@ def get_watch_flows(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]
         .order_by(func.date(WatchlistItem.trade_date))
         .all()
     )
-    return flows
+    return grouped_items
 
 
 def get_watchlists(

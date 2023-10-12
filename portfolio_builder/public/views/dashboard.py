@@ -3,12 +3,11 @@ from typing import Any, Dict, List
 import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required, current_user
-from sqlalchemy.sql import func
 from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, 
-    get_prices, get_watchlists, get_watch_items, get_watch_flows
+    get_prices, get_watchlists, get_watch_items, get_grouped_watch_items
 )
 from portfolio_builder.public.portfolio import FifoAccounting
 
@@ -299,7 +298,7 @@ def index() -> str:
         curr_watch_name = next(iter(watch_names), '')
     portf_pos = get_portf_positions(curr_watch_name)
     df_portf_val = get_portf_valuations(portf_pos)
-    portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
+    portf_flows = get_grouped_watch_items(filter=[Watchlist.name == curr_watch_name])
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     return render_template(
         'public/dashboard.html',
