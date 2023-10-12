@@ -105,6 +105,10 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
+def get_securities() -> List[Security]:
+    return db.session.query(Security).all()
+
+
 def get_prices(ticker: str) -> List[Price]:
     prices = (
         db

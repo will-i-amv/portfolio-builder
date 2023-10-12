@@ -10,8 +10,8 @@ from portfolio_builder.public.forms import (
     AddWatchlistForm, SelectWatchlistForm, AddItemForm
 )
 from portfolio_builder.public.models import (
-    Price, Security, Watchlist, WatchlistItem,
-    get_all_watch_names, get_watchlists, get_watch_items
+    Watchlist, WatchlistItem,
+    get_securities, get_all_watch_names, get_watchlists, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -54,7 +54,7 @@ def index() -> str:
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
-    securities = db.session.query(Security).all()
+    securities = get_securities()
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,
