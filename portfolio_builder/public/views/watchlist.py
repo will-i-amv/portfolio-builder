@@ -21,6 +21,12 @@ bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
 def index() -> str:
+    """
+    Renders the watchlist page and handles watchlist-related actions.
+
+    Returns:
+        str: A rendered HTML template with the necessary data.
+    """
     watch_names = get_all_watch_names()
     select_form = SelectWatchlistForm()
     add_watchlist_form = AddWatchlistForm()
@@ -53,6 +59,12 @@ def index() -> str:
 @bp.route('/add_watchlist', methods=['POST'])
 @login_required
 def add_watchlist() -> Response:
+    """
+    Adds a new watchlist to the database.
+
+    Returns:
+        Response: A redirect response to the 'watchlist.index' endpoint.
+    """
     watchlist_form = AddWatchlistForm()
     if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
@@ -73,6 +85,11 @@ def add_watchlist() -> Response:
 @bp.route('/delete_watchlist', methods=['POST'])
 @login_required
 def delete_watchlist() -> Response:
+    """
+    Deletes a watchlist from the database.
+
+    :return: A redirect response to the 'watchlist.index' route.
+    """
     if not request.method == "POST":
         return redirect(url_for('watchlist.index'))
     else:
@@ -89,6 +106,15 @@ def delete_watchlist() -> Response:
 @bp.route('/<watch_name>/add', methods=['POST'])
 @login_required
 def add(watch_name: str) -> Response:
+    """
+    Adds a new item to a specific watchlist in the database.
+
+    Args:
+        watch_name (str): The name of the watchlist to add the item to.
+
+    Returns:
+        Response: A redirect response to the `watchlist.index` endpoint.
+    """
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
         watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
@@ -121,6 +147,17 @@ def add(watch_name: str) -> Response:
 @bp.route('/<watch_name>/<ticker>/update', methods=['POST'])
 @login_required
 def update(watch_name: str, ticker: str) -> Response:
+    """
+    Updates a watchlist item, identified by the ticker, 
+    of a specific watchlist in the database.
+
+    Args:
+        watch_name (str): The name of the watchlist to update.
+        ticker (str): The ticker symbol of the watchlist item to update.
+
+    Returns:
+        Response: Redirects the user to the watchlist index page.
+    """
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
         last_items = get_watch_items(filter=[
@@ -153,6 +190,16 @@ def update(watch_name: str, ticker: str) -> Response:
 @bp.route('/<watch_name>/<ticker>/delete', methods=['POST'])
 @login_required
 def delete(watch_name: str, ticker: str) -> Response:
+    """
+    Deletes a specific ticker from a watchlist.
+
+    Args:
+        watch_name (str): The name of the watchlist from which the ticker should be deleted.
+        ticker (str): The ticker symbol of the stock to be deleted from the watchlist.
+
+    Returns:
+        Response: Redirects the user to the watchlist index page.
+    """
     items = get_watch_items(filter=[
         Watchlist.name == watch_name,
         WatchlistItem.ticker == ticker,
