@@ -51,6 +51,7 @@ def index() -> str:
     else:
         curr_watch_name = next(iter(watch_names), '')
     watch_items = get_watch_items(filter=[
+        Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
@@ -168,6 +169,7 @@ def update(watch_name: str, ticker: str) -> Response:
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
         last_items = get_watch_items(filter=[
+            Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
@@ -206,6 +208,7 @@ def delete(watch_name: str, ticker: str) -> Response:
         Response: Redirects the user to the watchlist index page.
     """
     items = get_watch_items(filter=[
+        Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == watch_name,
         WatchlistItem.ticker == ticker,
     ])

@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 from flask import Blueprint, request, render_template
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
@@ -46,11 +46,13 @@ def calc_portf_val_daily(
 
 def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
     tickers = get_watch_tickers(filter=[
+        Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == watchlist_name
     ])
     portf_pos = {}
     for ticker in tickers:
         trade_history = get_watch_trade_history(filter=[
+            Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watchlist_name,
             WatchlistItem.ticker == ticker,
         ])

@@ -128,10 +128,7 @@ def _watchlist_items_query(filter):
         .session
         .query(WatchlistItem)
         .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(
-            Watchlist.user_id == current_user.id,# type: ignore
-            *filter
-        )
+        .filter(*filter)
     )
     return query
 
@@ -209,10 +206,7 @@ def get_watchlists(filter: List[BinaryExpression]) -> List[Watchlist]:
         db
         .session
         .query(Watchlist)
-        .filter(
-            Watchlist.user_id==current_user.id, # type: ignore
-            *filter
-        )
+        .filter(*filter)
         .order_by(Watchlist.id)
         .all()
     )    
