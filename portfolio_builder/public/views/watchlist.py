@@ -192,9 +192,9 @@ def update(watch_name: str, ticker: str) -> Response:
                 comments=add_item_form.comments.data,
                 watchlist_id=last_item.watchlist_id
             )
-            # db.session.add_all([last_item, new_item])
-            # db.session.commit()
-            # flash(f"The ticker '{new_item.ticker}' has been updated.")
+            db.session.add_all([last_item, new_item])
+            db.session.commit()
+            flash(f"The ticker '{new_item.ticker}' has been updated.")
     elif add_item_form.errors:
         flash_errors(add_item_form)
     return redirect(url_for("watchlist.index"))
