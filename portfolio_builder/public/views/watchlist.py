@@ -3,6 +3,7 @@ import datetime as dt
 from flask import Blueprint, request, flash, redirect, render_template, url_for
 from werkzeug.wrappers.response import Response
 from flask_login import current_user, login_required
+from flask_wtf import FlaskForm
 
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.forms import (
@@ -17,6 +18,16 @@ from portfolio_builder.tasks import load_prices_ticker
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")
 
+
+def flash_errors(form: FlaskForm, category="warning"):
+    """Flash all errors for a form."""
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash(
+                f"{getattr(form, field).label.text} - {error}",  # type: ignore
+                category
+            )
+            
 
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
@@ -76,9 +87,7 @@ def add_watchlist() -> Response:
         db.session.commit()
         flash(f"The watchlist '{watchlist_name}' has been added.")
     elif watchlist_form.errors:
-        for error_name, error_desc in watchlist_form.errors.items():
-            error_name = error_name.title()
-            flash(f'{error_name}: {error_desc[0]}')
+        flash_errors(watchlist_form)
     return redirect(url_for('watchlist.index'))
 
 
@@ -138,9 +147,7 @@ def add(watch_name: str) -> Response:
                 args=[item.ticker],
             ) # task executes only once, immediately.
     elif add_item_form.errors:
-        for error_name, error_desc in add_item_form.errors.items():
-            error_name = error_name.title()
-            flash(f"{error_name}: {error_desc[0]}")
+        flash_errors(add_item_form)
     return redirect(url_for("watchlist.index"))
 
 
@@ -177,13 +184,11 @@ def update(watch_name: str, ticker: str) -> Response:
                 comments=add_item_form.comments.data,
                 watchlist_id=last_item.watchlist_id
             )
-            db.session.add_all([last_item, new_item])
-            db.session.commit()
-            flash(f"The ticker '{new_item.ticker}' has been updated.")
+            # db.session.add_all([last_item, new_item])
+            # db.session.commit()
+            # flash(f"The ticker '{new_item.ticker}' has been updated.")
     elif add_item_form.errors:
-        for error_name, error_desc in add_item_form.errors.items():
-            error_name = error_name.title()
-            flash(f"{error_name}: {error_desc[0]}")
+        flash_errors(add_item_form)
     return redirect(url_for("watchlist.index"))
 
 
