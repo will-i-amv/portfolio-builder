@@ -28,7 +28,10 @@ def db(app):
     _db.app = app # type: ignore
     with app.app_context():
         _db.create_all()
-
+        test_user = User(username='TestUser', password='TestPass') # type: ignore
+        _db.session.add(test_user)
+        _db.session.commit()
+    
     yield _db
 
     # Explicitly close DB connection
@@ -41,14 +44,14 @@ def client(app):
     return app.test_client()
 
 
-@pytest.fixture(scope='module')
-def authenticated_request(app, db):
+@pytest.fixture(scope='function')
+def authenticated_request(app, client, db):
     # As an alternative to this fixture
-    # just use LOGIN_DISABLED = True in your test settings 
+    # just use LOGIN_DISABLED = True in your test settings
     with app.app_context():
-        test_user = User(username='William', password='12345678') # type: ignore
-        db.session.add(test_user)
-        db.session.commit()
+        test_user = db.session.query(User).first() 
         with app.test_request_context():
             yield login_user(test_user)
-        # logout_user()
+            logout_user()
+            with client.session_transaction() as session:
+                session.clear()
