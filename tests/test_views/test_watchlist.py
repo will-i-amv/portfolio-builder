@@ -31,7 +31,7 @@ class TestDeleteItems:
         with client.session_transaction() as session:
             message = str(session['_flashes'])
             assert watchlist_item.ticker in message
-            assert 'has been deleted' in message
+            assert 'have been deleted' in message
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_multiple_tickers_from_watchlist(self, client, db):
@@ -74,7 +74,7 @@ class TestDeleteItems:
             all_messages = str(session['_flashes'])
             assert watchlist_item1.ticker in all_messages
             assert watchlist_item2.ticker in all_messages
-            assert 'has been deleted' in all_messages
+            assert 'have been deleted' in all_messages
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_ticker_from_watchlist_with_multiple_tickers(self, client, db):
@@ -116,4 +116,53 @@ class TestDeleteItems:
             message = str(session['_flashes'])
             assert watchlist_item1.ticker in message
             assert watchlist_item2.ticker not in message
-            assert 'has been deleted' in message
+            assert 'have been deleted' in message
+
+    @pytest.mark.usefixtures("authenticated_request")
+    def test_delete_nonexistent_ticker_from_watchlist(self, client, db):
+        watchlist = Watchlist(name="Test_Watchlist", user_id=1)
+        db.session.add(watchlist)
+        db.session.commit()
+        response = client.post('/watchlist/Test_Watchlist/AAPL/delete')
+        assert response.status_code == 302
+        assert len(get_watch_items(filter=[
+            Watchlist.user_id==1, 
+            Watchlist.name=="Test_Watchlist", 
+            WatchlistItem.ticker=="AAPL"])
+        ) == 0
+        with client.session_transaction() as session:
+            message = str(session['_flashes'])
+            assert 'An error occurred' in message
+
+    @pytest.mark.usefixtures("authenticated_request")
+    def test_delete_from_nonexistent_watchlist(self, client):
+        response = client.post('/watchlist/Test_Watchlist/AAPL/delete')
+        assert response.status_code == 302
+        with client.session_transaction() as session:
+            message = str(session['_flashes'])
+            assert 'An error occurred' in message
+
+    def test_delete_ticker_from_watchlist_unauthenticated(self, client, db):
+        watchlist = Watchlist(name="Test_Watchlist", user_id=1)
+        db.session.add(watchlist)
+        db.session.commit()
+        watchlist_item = WatchlistItem(
+            ticker='AAPL',
+            quantity=10,
+            price=175.0,
+            side='buy',
+            trade_date=dt.date.today(),
+            watchlist_id=watchlist.id,
+        )
+        db.session.add(watchlist_item)
+        db.session.commit()
+        response = client.post('/watchlist/Test_Watchlist/AAPL/delete')
+        assert response.status_code == 302
+        assert len(get_watch_items(filter=[
+            Watchlist.user_id==1, 
+            Watchlist.name=="Test_Watchlist", 
+            WatchlistItem.ticker=="AAPL"])
+        ) == 1
+        with client.session_transaction() as session:
+            message = str(session['_flashes'])
+            assert 'Please log in' in message

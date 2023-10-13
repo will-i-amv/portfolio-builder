@@ -218,9 +218,17 @@ def delete(watch_name: str, ticker: str) -> Response:
         Watchlist.name == watch_name,
         WatchlistItem.ticker == ticker,
     ])
-    if items:
+    if not items:
+        flash(
+            f"An error occurred while trying to delete " + 
+            f"the items of ticker '{ticker}' from watchlist '{watch_name}'."
+        )
+    else:
         for item in items:
             db.session.delete(item)
             db.session.commit()
-        flash(f"The ticker '{ticker}' has been deleted from the watchlist.")
+        flash(
+            f"The items of ticker '{ticker}' have been deleted " + 
+            f"from watchlist '{watch_name}'."
+        )
     return redirect(url_for('watchlist.index'))
