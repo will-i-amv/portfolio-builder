@@ -5,6 +5,9 @@ from portfolio_builder.public.models import Watchlist, WatchlistItem, get_watch_
 
 
 class TestDeleteItems:
+    def _get_messages(self, sesssion):
+        return [msg[1] for msg in sesssion['_flashes']]
+    
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_ticker_from_watchlist(self, client, db):
         # Deletes a specific ticker from a watchlist.
@@ -29,9 +32,9 @@ class TestDeleteItems:
             WatchlistItem.ticker=="AAPL"])
         ) == 0
         with client.session_transaction() as session:
-            message = str(session['_flashes'])
-            assert watchlist_item.ticker in message
-            assert 'have been deleted' in message
+            messages = self._get_messages(session)
+            assert watchlist_item.ticker in messages[0]
+            assert 'have been deleted' in messages[0]
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_multiple_tickers_from_watchlist(self, client, db):
@@ -71,10 +74,10 @@ class TestDeleteItems:
             WatchlistItem.ticker=="MSFT"])
         ) == 0
         with client.session_transaction() as session:
-            all_messages = str(session['_flashes'])
-            assert watchlist_item1.ticker in all_messages
-            assert watchlist_item2.ticker in all_messages
-            assert 'have been deleted' in all_messages
+            messages = self._get_messages(session)
+            assert all([('have been deleted' in msg) for msg in messages])
+            assert any([(watchlist_item1.ticker in msg) for msg in messages])
+            assert any([(watchlist_item2.ticker in msg) for msg in messages])
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_ticker_from_watchlist_with_multiple_tickers(self, client, db):
@@ -113,10 +116,10 @@ class TestDeleteItems:
             WatchlistItem.ticker=="MSFT"])
         ) == 1
         with client.session_transaction() as session:
-            message = str(session['_flashes'])
-            assert watchlist_item1.ticker in message
-            assert watchlist_item2.ticker not in message
-            assert 'have been deleted' in message
+            messages = self._get_messages(session)
+            assert 'have been deleted' in messages[0]
+            assert watchlist_item1.ticker in messages[0]
+            assert watchlist_item2.ticker not in messages[0]
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_nonexistent_ticker_from_watchlist(self, client, db):
@@ -131,16 +134,16 @@ class TestDeleteItems:
             WatchlistItem.ticker=="AAPL"])
         ) == 0
         with client.session_transaction() as session:
-            message = str(session['_flashes'])
-            assert 'An error occurred' in message
+            messages = self._get_messages(session)
+            assert 'An error occurred' in messages[0]
 
     @pytest.mark.usefixtures("authenticated_request")
     def test_delete_from_nonexistent_watchlist(self, client):
         response = client.post('/watchlist/Test_Watchlist/AAPL/delete')
         assert response.status_code == 302
         with client.session_transaction() as session:
-            message = str(session['_flashes'])
-            assert 'An error occurred' in message
+            messages = self._get_messages(session)
+            assert 'An error occurred' in messages[0]
 
     def test_delete_ticker_from_watchlist_unauthenticated(self, client, db):
         watchlist = Watchlist(name="Test_Watchlist", user_id=1)
@@ -164,5 +167,5 @@ class TestDeleteItems:
             WatchlistItem.ticker=="AAPL"])
         ) == 1
         with client.session_transaction() as session:
-            message = str(session['_flashes'])
-            assert 'Please log in' in message
+            messages = self._get_messages(session)
+            assert 'Please log in' in messages[0]
