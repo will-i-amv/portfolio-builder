@@ -45,7 +45,7 @@ def client(app):
 
 
 @pytest.fixture(scope='function')
-def authenticated_request(app, client, db):
+def login_required(app, client, db):
     # As an alternative to this fixture
     # just use LOGIN_DISABLED = True in your test settings
     with app.app_context():

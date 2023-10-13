@@ -48,7 +48,7 @@ class TestDelete:
         db.session.delete(item3)
         db.session.commit()
 
-    @pytest.mark.usefixtures("authenticated_request")
+    @pytest.mark.usefixtures("login_required")
     def test_delete_ticker_from_watchlist(self, client, loaded_db):
         # Deletes a specific ticker from a watchlist.
         ticker = 'AAPL'
@@ -71,7 +71,7 @@ class TestDelete:
             assert 'have been deleted' in messages[0]
 
 
-    @pytest.mark.usefixtures("authenticated_request")
+    @pytest.mark.usefixtures("login_required")
     def test_delete_multiple_tickers_from_watchlist(self, client, loaded_db):
         # Deletes multiple tickers from a watchlist.
         ticker1 = 'AAPL'
@@ -96,7 +96,7 @@ class TestDelete:
             assert any([(ticker1 in msg) for msg in messages])
             assert any([(ticker2 in msg) for msg in messages])
 
-    @pytest.mark.usefixtures("authenticated_request")
+    @pytest.mark.usefixtures("login_required")
     def test_delete_ticker_from_watchlist_with_multiple_tickers(self, client, loaded_db):
         # Deletes a ticker from a watchlist with multiple tickers.
         ticker1 = 'AAPL'
@@ -120,7 +120,7 @@ class TestDelete:
             assert ticker1 in messages[0]
             assert ticker2 not in messages[0]
 
-    @pytest.mark.usefixtures("authenticated_request")
+    @pytest.mark.usefixtures("login_required")
     def test_delete_nonexistent_ticker_from_watchlist(self, client, loaded_db):
         ticker = 'GOOG'
         watch_name = "Test_Watchlist"
@@ -135,7 +135,7 @@ class TestDelete:
             messages = _get_messages(session)
             assert 'An error occurred' in messages[0]
 
-    @pytest.mark.usefixtures("authenticated_request")
+    @pytest.mark.usefixtures("login_required")
     def test_delete_from_nonexistent_watchlist(self, client, loaded_db):
         ticker = 'AAPL'
         watch_name = "Nonexising_Watchlist"
