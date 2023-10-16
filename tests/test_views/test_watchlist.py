@@ -100,13 +100,18 @@ class TestDelete:
     def test_delete_nonexistent_ticker(self, client, loaded_db):
         ticker = 'GOOG'
         watch_name = "Test_Watchlist"
-        response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
-        assert response.status_code == 302
         assert len(get_watch_items(filter=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
         ) == 0
+        response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
+        assert len(get_watch_items(filter=[
+            Watchlist.user_id==1, 
+            Watchlist.name==watch_name, 
+            WatchlistItem.ticker==ticker])
+        ) == 0
+        assert response.status_code == 302
         with client.session_transaction() as session:
             messages = _get_messages(session)
             assert 'An error occurred' in messages[0]
@@ -124,6 +129,11 @@ class TestDelete:
     def test_delete_ticker_unauthenticated(self, client, loaded_db):
         ticker = 'AAPL'
         watch_name = "Test_Watchlist"
+        assert len(get_watch_items(filter=[
+            Watchlist.user_id==1, 
+            Watchlist.name==watch_name, 
+            WatchlistItem.ticker==ticker])
+        ) == 1
         response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
         assert response.status_code == 302
         assert len(get_watch_items(filter=[
