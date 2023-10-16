@@ -4,13 +4,13 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 db_passwd = os.environ.get('DB_PASSWD')
 db_user = os.environ.get('DB_USER')
 db_host = os.environ.get('DB_HOST')
 
 
 class Settings:
+    ROOT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev'
 
     # API keys
@@ -25,7 +25,7 @@ class DevSettings(Settings):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get('DEV_DATABASE_URL') or 
-        'sqlite:///' + os.path.join(root_dir, 'data-dev.sqlite')
+        'sqlite:///' + os.path.join(Settings.ROOT_DIR, 'data-dev.sqlite')
     )
 
 
