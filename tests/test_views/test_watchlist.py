@@ -2,11 +2,24 @@ import datetime as dt
 
 import pytest
 from portfolio_builder.auth.models import User
-from portfolio_builder.public.models import Watchlist, WatchlistItem, get_watch_items
+from portfolio_builder.public.models import (
+    Watchlist, WatchlistItem, Security,
+    get_watch_items
+)
+from portfolio_builder.tasks import load_securities_csv
 
 
 def _get_messages(sesssion):
     return [msg[1] for msg in sesssion['_flashes']]
+
+
+@pytest.fixture(scope='module')
+def all_tickers(db):
+    load_securities_csv()
+    tickers = db.session.query(Security).with_entities(Security.ticker).all()
+    yield [item.ticker for item in tickers]
+    _ = db.session.query(Security).delete()
+    db.session.commit()
 
 
 class TestDelete:
