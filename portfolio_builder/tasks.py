@@ -102,26 +102,35 @@ def get_prices_tiingo(
     return df_cleaned
 
 
+
+def load_securities_csv() -> None:
+    app = current_app._get_current_object() # type: ignore
+    df = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
+    df.to_sql(
+        "securities",
+        con=db.engine,
+        if_exists="append",
+        index=False
+    )
+
+
 def load_securities() -> None:
     app = current_app._get_current_object() # type: ignore
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     API_KEY_EODHD = app.config['API_KEY_EODHD']
-    if not (API_KEY_TIINGO and API_KEY_EODHD):
-        df_cleaned = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
-    else:
-        df_eodhd = get_securities_eodhd(API_KEY_EODHD)
-        df_tiingo = get_securities_tiingo(API_KEY_TIINGO)
-        df_cleaned = (
-            pd
-            .merge(
-                df_tiingo,
-                df_eodhd,
-                on=['ticker', 'exchange', 'asset_type', 'currency'],
-                how='inner'
-            )
-            .drop_duplicates(subset=['ticker', 'exchange', 'asset_type', 'currency'])
-            .drop(columns=['asset_type'], axis=1)
+    df_eodhd = get_securities_eodhd(API_KEY_EODHD)
+    df_tiingo = get_securities_tiingo(API_KEY_TIINGO)
+    df_cleaned = (
+        pd
+        .merge(
+            df_tiingo,
+            df_eodhd,
+            on=['ticker', 'exchange', 'asset_type', 'currency'],
+            how='inner'
         )
+        .drop_duplicates(subset=['ticker', 'exchange', 'asset_type', 'currency'])
+        .drop(columns=['asset_type'], axis=1)
+    )
     df_cleaned.to_sql(
         "securities",
         con=db.engine,
