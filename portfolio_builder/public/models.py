@@ -170,7 +170,7 @@ def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[An
 
 def get_watchlists(
     filter: List[BinaryExpression],
-    columns: List[Any] = Watchlist
+    columns: List[Any] = [Watchlist]
 ) -> List[Watchlist]:
     watchlists = (
         db
