@@ -96,7 +96,7 @@ def get_prices_tiingo(
         .reset_index()
         .rename(columns={'index': 'date'})
         .melt('date', var_name='ticker_id', value_name='close_price')
-        .assign(**{'date': lambda x: pd.to_datetime(x['date'])})
+        .assign(**{'date': lambda x: pd.to_datetime(x['date']).dt.date}) # Just take date part
         .astype({'ticker_id': 'int64', 'close_price': 'float64'})
     )
     return df_cleaned
