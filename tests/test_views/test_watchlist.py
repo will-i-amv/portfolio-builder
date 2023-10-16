@@ -49,7 +49,7 @@ class TestDelete:
         db.session.commit()
 
     @pytest.mark.usefixtures("login_required")
-    def test_delete_ticker_from_watchlist(self, client, loaded_db):
+    def test_delete_single_ticker(self, client, loaded_db):
         # Deletes a specific ticker from a watchlist.
         ticker = 'AAPL'
         watch_name = "Test_Watchlist"
@@ -58,7 +58,7 @@ class TestDelete:
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
         ) == 1
-        response = client.post(f'/watchlist/Test_Watchlist/{ticker}/delete')
+        response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
         assert response.status_code == 302
         assert len(get_watch_items(filter=[
             Watchlist.user_id==1, 
@@ -72,7 +72,7 @@ class TestDelete:
 
 
     @pytest.mark.usefixtures("login_required")
-    def test_delete_multiple_tickers_from_watchlist(self, client, loaded_db):
+    def test_delete_multiple_tickers(self, client, loaded_db):
         # Deletes multiple tickers from a watchlist.
         ticker1 = 'AAPL'
         ticker2 = 'AMZN'
@@ -82,8 +82,8 @@ class TestDelete:
             Watchlist.name==watch_name, 
             WatchlistItem.ticker.in_([ticker1, ticker2])
         ])) == 2
-        response = client.post(f'/watchlist/Test_Watchlist/{ticker1}/delete')
-        response = client.post(f'/watchlist/Test_Watchlist/{ticker2}/delete')
+        response = client.post(f'/watchlist/{watch_name}/{ticker1}/delete')
+        response = client.post(f'/watchlist/{watch_name}/{ticker2}/delete')
         assert response.status_code == 302
         assert len(get_watch_items(filter=[
             Watchlist.user_id==1, 
@@ -97,34 +97,10 @@ class TestDelete:
             assert any([(ticker2 in msg) for msg in messages])
 
     @pytest.mark.usefixtures("login_required")
-    def test_delete_ticker_from_watchlist_with_multiple_tickers(self, client, loaded_db):
-        # Deletes a ticker from a watchlist with multiple tickers.
-        ticker1 = 'AAPL'
-        ticker2 = 'MSFT'
-        watch_name = "Test_Watchlist"
-        response = client.post('/watchlist/Test_Watchlist/AAPL/delete')
-        assert response.status_code == 302
-        assert len(get_watch_items(filter=[
-            Watchlist.user_id==1, 
-            Watchlist.name==watch_name, 
-            WatchlistItem.ticker==ticker1])
-        ) == 0
-        assert len(get_watch_items(filter=[
-            Watchlist.user_id==1, 
-            Watchlist.name=="Test_Watchlist", 
-            WatchlistItem.ticker==ticker2])
-        ) == 1
-        with client.session_transaction() as session:
-            messages = _get_messages(session)
-            assert 'have been deleted' in messages[0]
-            assert ticker1 in messages[0]
-            assert ticker2 not in messages[0]
-
-    @pytest.mark.usefixtures("login_required")
-    def test_delete_nonexistent_ticker_from_watchlist(self, client, loaded_db):
+    def test_delete_nonexistent_ticker(self, client, loaded_db):
         ticker = 'GOOG'
         watch_name = "Test_Watchlist"
-        response = client.post('/watchlist/Test_Watchlist/{ticker}/delete')
+        response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
         assert response.status_code == 302
         assert len(get_watch_items(filter=[
             Watchlist.user_id==1, 
@@ -145,7 +121,7 @@ class TestDelete:
             messages = _get_messages(session)
             assert 'An error occurred' in messages[0]
 
-    def test_delete_ticker_from_watchlist_unauthenticated(self, client, loaded_db):
+    def test_delete_ticker_unauthenticated(self, client, loaded_db):
         ticker = 'AAPL'
         watch_name = "Test_Watchlist"
         response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
