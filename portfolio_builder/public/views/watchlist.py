@@ -135,7 +135,9 @@ def add(watch_name: str) -> Response:
     if add_item_form.validate_on_submit():
         watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
         watchlist = next(iter(watchlists), Watchlist())
-        if watchlist.id:
+        if not watchlist.id:
+            flash(f"The watchlist '{watch_name}' does not exist.")
+        else:
             item = WatchlistItem(
                 ticker=add_item_form.ticker.data, 
                 quantity=add_item_form.quantity.data,
