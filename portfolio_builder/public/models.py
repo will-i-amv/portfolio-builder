@@ -8,8 +8,8 @@ from sqlalchemy.sql.elements import BinaryExpression
 from portfolio_builder import db
 
 
-def get_default_date() -> dt.datetime:
-    trade_date = dt.datetime.utcnow()
+def get_default_date() -> dt.date:
+    trade_date = dt.date.today()
     weekday = dt.date.isoweekday(trade_date)
     if weekday == 6: # Saturday
         trade_date = trade_date - dt.timedelta(days=1)
@@ -90,7 +90,7 @@ class WatchlistItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
     side = db.Column(db.String(5), nullable=False)
-    trade_date = db.Column(db.DateTime, default=get_default_date)
+    trade_date = db.Column(db.Date, nullable=False)
     is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     comments = db.Column(db.String(140))

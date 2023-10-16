@@ -5,7 +5,7 @@ from flask_wtf import FlaskForm
 from sqlalchemy.sql import func, case
 from wtforms import validators as v
 from wtforms import (
-    DateTimeField, DecimalField, HiddenField, IntegerField, 
+    DateField, DecimalField, HiddenField, IntegerField, 
     StringField, SubmitField, SelectField, TextAreaField
 )
 
@@ -66,7 +66,11 @@ class AddItemForm(FlaskForm):
         choices=['buy', 'sell'],
         validators=[v.InputRequired()]
     )
-    trade_date = DateTimeField("Trade Date", default=get_default_date)
+    trade_date = DateField(
+        "Trade Date", 
+        validators=[v.InputRequired()],
+        default=get_default_date
+    )
     comments = TextAreaField(
         "Comments",
         validators=[v.Optional(), v.Length(max=140)]
@@ -86,7 +90,7 @@ class AddItemForm(FlaskForm):
                 f'The ticker "{ticker.data}" is unavailable.'
             )
 
-    def validate_trade_date(self, trade_date: DateTimeField):
+    def validate_trade_date(self, trade_date: DateField):
         """
         The trade date of a ticker can't be in the future, 
         on weekends, or before the last trade, if it exists.
