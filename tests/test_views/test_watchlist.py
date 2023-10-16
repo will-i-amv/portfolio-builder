@@ -22,6 +22,65 @@ def all_tickers(db):
     db.session.commit()
 
 
+class TestAdd:
+    @pytest.fixture(scope='function')
+    def loaded_db(self, db):
+        user = db.session.query(User).first()
+        watchlist = Watchlist(name="Test_Watchlist", user_id=user.id)
+        db.session.add(watchlist)
+        db.session.commit()
+        yield
+        db.session.query(WatchlistItem).delete()
+        db.session.query(Watchlist).delete()
+        db.session.commit()
+
+    @pytest.mark.usefixtures("login_required")
+    def test_add_item(self, client, loaded_db, all_tickers):
+        # Add a new item to a watchlist
+        ticker = 'AAPL'
+        watch_name = 'Test_Watchlist'
+        response = client.post(
+            f'/watchlist/{watch_name}/add', 
+            data={
+                'ticker': ticker,
+                'quantity': 15,
+                'price': 175.0,
+                'side': 'buy',
+                'trade_date': dt.date.today(),
+                'comments': ''
+            },
+        )
+        assert response.status_code == 302
+        assert len(get_watch_items(filter=[
+            Watchlist.user_id==1, 
+            Watchlist.name==watch_name, 
+            WatchlistItem.ticker==ticker])
+        ) == 1
+        with client.session_transaction() as session:
+            messages = _get_messages(session)
+            assert ticker in messages[0]
+            assert "has been added to the watchlist" in messages[0]
+
+    @pytest.mark.usefixtures("login_required")
+    def test_add_item_to_nonexistent_watchlist(self, client, db, loaded_db, all_tickers):
+        # Add an item to a non-existent watchlist
+        ticker = 'MSFT'
+        watch_name = 'Non_existing_watchlist'
+        response = client.post(f'/watchlist/{watch_name}/add', data={
+            'ticker': ticker,
+            'quantity': 10,
+            'price': 330.0,
+            'side': 'buy',
+            'trade_date': dt.date.today(),
+            'comments': ''
+        })
+        assert response.status_code == 302
+        with client.session_transaction() as session:
+            messages = _get_messages(session)
+            assert ticker not in messages[0]
+            assert "does not exist" in messages[0]
+
+
 class TestDelete:
     @pytest.fixture(scope='function')
     def loaded_db(self, db):
@@ -56,9 +115,8 @@ class TestDelete:
         db.session.add_all([item1, item2, item3])
         db.session.commit()
         yield
-        db.session.delete(item1)
-        db.session.delete(item2)
-        db.session.delete(item3)
+        db.session.query(WatchlistItem).delete()
+        db.session.query(Watchlist).delete()
         db.session.commit()
 
     @pytest.mark.usefixtures("login_required")
