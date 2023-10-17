@@ -3,6 +3,7 @@ from typing import Any, List, Tuple
 
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
+from sqlalchemy.orm import Query
 from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
@@ -139,7 +140,7 @@ def get_prices(
     return prices
 
 
-def get_watch_item(filter):
+def get_watch_item(filter: List[BinaryExpression]) -> Query[WatchlistItem]:
     query = (
         db
         .session
@@ -186,16 +187,24 @@ def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[An
     return grouped_items
 
 
+def get_watchlist(filter: List[BinaryExpression]) -> Query[Watchlist]:
+    query = (
+        db
+        .session
+        .query(Watchlist)
+        .filter(*filter)
+    )
+    return query
+
+
 def get_watchlists(
     filter: List[BinaryExpression],
     select: List[Any] = [Watchlist],
     orderby: List[Any] = [Watchlist.id]
 ) -> List[Watchlist]:
+    query = get_watchlist(filter)
     watchlists = (
-        db
-        .session
-        .query(Watchlist)
-        .filter(*filter)
+        query
         .with_entities(*select)
         .order_by(*orderby)
         .all()
