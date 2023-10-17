@@ -121,7 +121,7 @@ def get_prices(ticker: str) -> List[Price]:
     return prices
 
 
-def _filter_watchlist_items(filter):
+def get_watch_item(filter):
     query = (
         db
         .session
@@ -137,7 +137,7 @@ def get_watch_items(
     select: List[Any] = [WatchlistItem],
     orderby: List[Any] = [WatchlistItem.id]
 ) -> List[WatchlistItem]:
-    query = _filter_watchlist_items(filter)
+    query = get_watch_item(filter)
     items = (
         query
         .with_entities(*select)
@@ -148,7 +148,7 @@ def get_watch_items(
 
 
 def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[Any, Any]]]:
-    query = _filter_watchlist_items(filter)
+    query = get_watch_item(filter)
     grouped_items = (
         query
         .group_by(func.date(WatchlistItem.trade_date))
