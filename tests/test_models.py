@@ -3,7 +3,8 @@ import pytest
 from sqlalchemy.exc import IntegrityError, DataError
 
 from portfolio_builder.public.models import (
-    Security, Price, Watchlist, WatchlistItem, get_watchlists
+    Security, Price, Watchlist, WatchlistItem, 
+    get_securities, get_watchlists
 )
 
 
@@ -237,3 +238,80 @@ class TestWatchlistItem:
             )
             db.session.add(item)
             db.session.commit()
+
+
+class TestGetSecurities:
+
+    def test_returns_list_of_security_objects(self, db, db_teardown):
+        securities = []
+        security1 = Security(
+            name="Security 1", 
+            ticker="TICKER1", 
+            exchange="EXCHANGE1", 
+            currency="USD", 
+            country="Country 1", 
+            isin="ISIN1"
+        )
+        security2 = Security(
+            name="Security 2", 
+            ticker="TICKER2", 
+            exchange="EXCHANGE2", 
+            currency="EUR", 
+            country="Country 2", 
+            isin="ISIN2"
+        )
+        securities.extend([security1, security2])
+        db.session.add_all(securities)
+        db.session.commit()
+        stored_securities = get_securities()
+        assert isinstance(securities, list)
+        assert len(stored_securities) == len(securities)
+        for sec, stored_sec in zip(securities, stored_securities):
+            assert isinstance(stored_sec, Security)
+            assert stored_sec.name == sec.name
+            assert stored_sec.ticker == sec.ticker
+            assert stored_sec.exchange == sec.exchange
+            assert stored_sec.currency == sec.currency
+            assert stored_sec.country == sec.country
+            assert stored_sec.isin == sec.isin
+
+    def test_returns_empty_list(self):
+        securities = get_securities()
+        assert isinstance(securities, list)
+        assert len(securities) == 0
+
+    def test_returns_list_one_price_object(self, db, db_teardown):
+        security = Security(
+            name="Security 1", 
+            ticker="TICKER1", 
+            exchange="EXCHANGE1", 
+            currency="USD", 
+            country="Country 1", 
+            isin="ISIN1"
+        )
+        db.session.add(security)
+        db.session.commit()
+        price = Price(date=dt.date(2022, 1, 1), close_price=10.0, ticker_id=security.id)
+        db.session.add(price)
+        db.session.commit()
+        securities = get_securities()
+        for sec in securities:
+            assert len(sec.prices) == 1 # type: ignore
+            assert isinstance(sec.prices[0], Price) # type: ignore
+            assert sec.prices[0].date == dt.date(2022, 1, 1) # type: ignore
+            assert sec.prices[0].close_price == 10.0 # type: ignore
+
+    def test_returns_empty_list_no_price_objects(self, db, db_teardown):
+        security = Security(
+            name="Security 1", 
+            ticker="TICKER1", 
+            exchange="EXCHANGE1", 
+            currency="USD", 
+            country="Country 1", 
+            isin="ISIN1"
+        )
+        db.session.add(security)
+        db.session.commit()
+        securities = get_securities()
+        assert len(securities[0].prices) == 0 # type: ignore
+
