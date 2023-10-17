@@ -143,3 +143,97 @@ class TestWatchlist:
             watchlist = Watchlist(name="My Watchlist", user_id=None)
             db.session.add(watchlist)
             db.session.commit()
+
+
+class TestWatchlistItem:
+
+    def test_valid_parameters(self, db, db_teardown):
+        item = WatchlistItem(
+            ticker="AAPL",
+            quantity=10,
+            price=100.0,
+            side="buy",
+            trade_date=dt.date.today(),
+            is_last_trade=False,
+            created_timestamp=dt.datetime.utcnow(),
+            comments="Test comment",
+            watchlist_id=1
+        )
+        assert item.ticker == "AAPL"
+        assert item.quantity == 10
+        assert item.price == 100.0
+        assert item.side == "buy"
+        assert item.trade_date == dt.date.today()
+        assert item.is_last_trade == False
+        assert item.created_timestamp != None
+        assert item.comments == "Test comment"
+        assert item.watchlist_id == 1
+        db.session.add(item)
+        db.session.commit()
+        stored_item = WatchlistItem.query.get(item.id)
+        assert stored_item == item
+
+    def test_invalid_ticker(self, db, with_rollback):
+        with pytest.raises(Exception):
+            item = WatchlistItem(
+                ticker=None,
+                quantity=10,
+                price=100.0,
+                side="buy",
+                trade_date=dt.date.today(),
+                watchlist_id=1
+            )
+            db.session.add(item)
+            db.session.commit()
+
+    def test_invalid_quantity(self, db, with_rollback):
+        with pytest.raises(Exception):
+            item = WatchlistItem(
+                ticker="AAPL",
+                quantity=None,
+                price=100.0,
+                side="buy",
+                trade_date=dt.date.today(),
+                watchlist_id=1
+            )
+            db.session.add(item)
+            db.session.commit()
+
+    def test_invalid_price(self, db, with_rollback):
+        with pytest.raises(Exception):
+            item = WatchlistItem(
+                ticker="AAPL",
+                quantity=10,
+                price=None,
+                side="buy",
+                trade_date=dt.date.today(),
+                watchlist_id=1
+            )
+            db.session.add(item)
+            db.session.commit()
+
+    def test_invalid_side(self, db, with_rollback):
+        with pytest.raises(Exception):
+            item = WatchlistItem(
+                ticker="AAPL",
+                quantity=10,
+                price=170.0,
+                side=None,
+                trade_date=dt.date.today(),
+                watchlist_id=1
+            )
+            db.session.add(item)
+            db.session.commit()
+
+    def test_invalid_trade_date(self, db, with_rollback):
+        with pytest.raises(Exception):
+            item = WatchlistItem(
+                ticker="AAPL",
+                quantity=10,
+                price=170.0,
+                side="buy",
+                trade_date=None,
+                watchlist_id=1
+            )
+            db.session.add(item)
+            db.session.commit()
