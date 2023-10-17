@@ -289,7 +289,7 @@ def index() -> str:
         item.name
         for item in get_watchlists(
             filter=[Watchlist.user_id==current_user.id], # type: ignore 
-            columns=[Watchlist.name]
+            select=[Watchlist.name],
         )
     ]
     if request.method == 'POST':

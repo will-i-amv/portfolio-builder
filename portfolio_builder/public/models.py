@@ -170,15 +170,16 @@ def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[An
 
 def get_watchlists(
     filter: List[BinaryExpression],
-    columns: List[Any] = [Watchlist]
+    select: List[Any] = [Watchlist],
+    orderby: List[Any] = [Watchlist.id]
 ) -> List[Watchlist]:
     watchlists = (
         db
         .session
         .query(Watchlist)
         .filter(*filter)
-        .with_entities(*columns)
-        .order_by(Watchlist.id)
+        .with_entities(*select)
+        .order_by(*orderby)
         .all()
     )    
     return watchlists
