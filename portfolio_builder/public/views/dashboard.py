@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
-    Watchlist, WatchlistItem, 
+    Watchlist, WatchlistItem, Security,
     get_prices, get_watchlists, get_watch_items, get_grouped_watch_items
 )
 from portfolio_builder.public.portfolio import FifoAccounting
@@ -92,7 +92,7 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
 def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     df_portf_val = pd.DataFrame()
     for ticker, df_positions in portf_pos.items():
-        prices = get_prices(ticker)
+        prices = get_prices(filter=[Security.ticker == ticker])
         df_prices = (
             pd
             .DataFrame(

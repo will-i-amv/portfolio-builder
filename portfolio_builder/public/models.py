@@ -104,18 +104,36 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_securities() -> List[Security]:
-    return db.session.query(Security).all()
+def get_securities(
+    filter: List[BinaryExpression] = [db.literal(1) == db.literal(1)],
+    select: List[Any] = [Security],
+    orderby: List[Any] = [Security.ticker]
+) -> List[Security]:
+    prices = (
+        db
+        .session
+        .query(Security)
+        .filter(*filter)
+        .with_entities(*select)
+        .order_by(*orderby)
+        .all()
+    )
+    return prices
 
 
-def get_prices(ticker: str) -> List[Price]:
+def get_prices(
+    filter: List[BinaryExpression],
+    select: List[Any] = [Price.date, Price.close_price],
+    orderby: List[Any] = [Price.date] 
+) -> List[Row[Tuple[Any, Any]]]:
     prices = (
         db
         .session
         .query(Price)
         .join(Security, onclause=(Price.ticker_id==Security.id))
-        .filter(Security.ticker == ticker)
-        .with_entities(Price.date, Price.close_price)
+        .filter(*filter)
+        .with_entities(*select)
+        .order_by(*orderby)
         .all()
     )
     return prices
