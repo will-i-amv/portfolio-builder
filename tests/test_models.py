@@ -1,8 +1,10 @@
 import datetime as dt
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, DataError
 
-from portfolio_builder.public.models import Security, Price
+from portfolio_builder.public.models import (
+    Security, Price, Watchlist, WatchlistItem, get_watchlists
+)
 
 
 @pytest.fixture(scope='function')
@@ -10,6 +12,8 @@ def db_teardown(db):
     yield db
     db.session.query(Price).delete()
     db.session.query(Security).delete()
+    db.session.query(Watchlist).delete()
+    db.session.query(WatchlistItem).delete()
     db.session.commit()
 
 
@@ -94,3 +98,48 @@ class TestPrice:
             db.session.add(null_ticker_id)
             db.session.commit()
 
+
+class TestWatchlist:
+
+    def test_add_watchlist_with_items(self, db, db_teardown):
+        watchlist = Watchlist(name="My Watchlist", user_id=1)
+        assert watchlist.name == "My Watchlist"
+        assert watchlist.user_id == 1
+        item = WatchlistItem(
+            ticker = 'AAPL',
+            quantity = 10,
+            price = 170.0,
+            side = 'buy',
+            trade_date = dt.date.today(),
+            watchlist_id=watchlist.id,
+        )
+        watchlist.items.append(item)
+        assert len(watchlist.items) == 1 # type: ignore
+        assert watchlist.items[0] == item # type: ignore
+        db.session.add(watchlist)
+        db.session.commit()
+        stored_watchlist = Watchlist.query.get(watchlist.id)
+        assert stored_watchlist == watchlist
+
+    def test_retrieve_watchlists_for_user(self, db, db_teardown):
+        user_id = 1
+        watchlist1 = Watchlist(name="Watchlist 1", user_id=user_id)
+        watchlist2 = Watchlist(name="Watchlist 2", user_id=user_id)
+        db.session.add_all([watchlist1, watchlist2])
+        db.session.commit()
+        watchlists = get_watchlists([Watchlist.user_id == user_id])
+        assert len(watchlists) == 2
+        assert watchlists[0] == watchlist1
+        assert watchlists[1] == watchlist2
+
+    def test_create_watchlist_with_null_name(self, db, with_rollback):
+        with pytest.raises(IntegrityError):
+            watchlist = Watchlist(name=None, user_id=1)
+            db.session.add(watchlist)
+            db.session.commit()
+
+    def test_create_watchlist_with_null_user_id(self, db, with_rollback):
+        with pytest.raises(IntegrityError):
+            watchlist = Watchlist(name="My Watchlist", user_id=None)
+            db.session.add(watchlist)
+            db.session.commit()
