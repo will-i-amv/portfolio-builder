@@ -1,12 +1,52 @@
 import datetime as dt
+import random
+
 import pytest
-from sqlalchemy import column
-from sqlalchemy.exc import IntegrityError, DataError
+from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
     Security, Price, Watchlist, WatchlistItem, 
     get_securities, get_watchlists
 )
+
+
+@pytest.fixture(scope='function')
+def securities(db):
+    securities = [
+        Security(name="Apple Inc.", ticker="AAPL", exchange="NASDAQ"),
+        Security(name="Amazon.com Inc.", ticker="AMZN", exchange="NASDAQ"),
+        Security(name="Microsoft Corporation", ticker="MSFT", exchange="NASDAQ"),
+    ]
+    db.session.add_all(securities)
+    db.session.commit()
+    yield securities
+
+
+@pytest.fixture(scope='function')
+def prices(db, securities):
+    aapl_sec = securities[0]
+    amzn_sec = securities[1]
+    msft_sec = securities[2]
+    prices = [
+        Price(date=dt.date(2023, 10, 10), close_price=175.0, ticker_id=aapl_sec.id),
+        Price(date=dt.date(2023, 10, 11), close_price=180.0, ticker_id=aapl_sec.id),
+        Price(date=dt.date(2023, 110, 12), close_price=170.0, ticker_id=aapl_sec.id),
+        Price(date=dt.date(2023, 10, 10), close_price=131.0, ticker_id=amzn_sec.id),
+        Price(date=dt.date(2023, 10, 11), close_price=126.0, ticker_id=amzn_sec.id),
+        Price(date=dt.date(2023, 110, 12), close_price=132.0, ticker_id=amzn_sec.id),
+        Price(date=dt.date(2023, 10, 10), close_price=331.0, ticker_id=msft_sec.id),
+        Price(date=dt.date(2023, 10, 11), close_price=334.0, ticker_id=msft_sec.id),
+        Price(date=dt.date(2023, 110, 12), close_price=330.0, ticker_id=msft_sec.id),
+    ]
+    db.session.add_all(prices)
+    db.session.commit()
+    yield prices
+
+
+@pytest.fixture(scope='function')
+def db_rollback(db):
+    yield
+    db.session.rollback()
 
 
 @pytest.fixture(scope='function')
@@ -17,20 +57,6 @@ def db_teardown(db):
     db.session.query(Watchlist).delete()
     db.session.query(WatchlistItem).delete()
     db.session.commit()
-
-
-@pytest.fixture(scope='function')
-def with_rollback(db):
-    yield
-    db.session.rollback()
-
-
-@pytest.fixture(scope='function')
-def security(db):
-    security = Security(name="Apple Inc.", ticker="AAPL", exchange="NASDAQ")
-    db.session.add(security)
-    db.session.commit()
-    yield security
 
 
 class TestSecurity:
@@ -49,31 +75,21 @@ class TestSecurity:
         stored_security = Security.query.get(security.id)
         assert stored_security == security
 
-    def test_create_instance_with_empty_name(self, db, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_name = Security(name=None, ticker="AAPL", exchange="NASDAQ")
-            db.session.add(null_name)
-            db.session.commit()
-
-    # create a Security instance with an empty ticker
-    def test_create_instance_with_empty_ticker(self, db, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_ticker = Security(name="Apple Inc.", ticker=None, exchange="NASDAQ")
-            db.session.add(null_ticker)
-            db.session.commit()
-
-    # create a Security instance with an empty exchange
-    def test_create_instance_with_empty_exchange(self, db, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_exchange = Security(name="Apple Inc.", ticker="AAPL", exchange=None)
-            db.session.add(null_exchange)
-            db.session.commit()
+    def test_create_instances_with_null_values(self, db, db_teardown):
+        for attr in ['name', 'ticker', 'exchange']:
+            with pytest.raises(IntegrityError):
+                invalid_sec = Security(name="Apple Inc.", ticker="AAPL", exchange="NASDAQ")
+                setattr(invalid_sec, attr, None)
+                db.session.add(invalid_sec)
+                db.session.commit()
+            db.session.rollback()
 
 
 class TestPrice:
 
-    def test_create_valid_instance(self, db, security):
-        price = Price(date=dt.date(2022, 1, 1), close_price=10.0, ticker_id=security.id)
+    def test_create_valid_instance(self, db, securities):
+        sec = random.choice(securities)
+        price = Price(date=dt.date(2022, 1, 1), close_price=10.0, ticker_id=sec.id)
         assert price.date == dt.date(2022, 1, 1)
         assert price.close_price == 10.0
         assert price.ticker_id == 1
@@ -82,23 +98,19 @@ class TestPrice:
         stored_price = Price.query.get(price.id)
         assert stored_price == price
 
-    def test_create_price_with_null_date(self, db, security, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_date = Price(date=None, close_price=170.0, ticker_id=security.id)
-            db.session.add(null_date)
-            db.session.commit()
-
-    def test_create_price_with_null_close_price(self, db, security, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_price = Price(date=dt.date(2022, 1, 1), close_price=None, ticker_id=security.id)
-            db.session.add(null_price)
-            db.session.commit()
-
-    def test_create_price_with_null_ticker_id(self, db, with_rollback):
-        with pytest.raises(IntegrityError):
-            null_ticker_id = Price(date=dt.date(2022, 1, 1), close_price=180.0, ticker_id=None)
-            db.session.add(null_ticker_id)
-            db.session.commit()
+    def test_create_instances_with_null_values(self, db, securities, db_teardown):
+        sec = random.choice(securities)
+        for attr in ['date', 'close_price', 'ticker_id']:
+            with pytest.raises(IntegrityError):
+                invalid_price = Price(
+                    date=dt.date(2023, 10, 12), 
+                    close_price=200.0, 
+                    ticker_id=sec.id
+                )
+                setattr(invalid_price, attr, None)
+                db.session.add(invalid_price)
+                db.session.commit()
+            db.session.rollback()
 
 
 class TestWatchlist:
@@ -139,13 +151,13 @@ class TestWatchlist:
             assert stored_watch.name == watch.name
             assert stored_watch.user_id == watch.user_id
 
-    def test_create_watchlist_with_null_name(self, db, with_rollback):
+    def test_create_watchlist_with_null_name(self, db, db_rollback):
         with pytest.raises(IntegrityError):
             watchlist = Watchlist(name=None, user_id=1)
             db.session.add(watchlist)
             db.session.commit()
 
-    def test_create_watchlist_with_null_user_id(self, db, with_rollback):
+    def test_create_watchlist_with_null_user_id(self, db, db_rollback):
         with pytest.raises(IntegrityError):
             watchlist = Watchlist(name="My Watchlist", user_id=None)
             db.session.add(watchlist)
@@ -180,7 +192,7 @@ class TestWatchlistItem:
         stored_item = WatchlistItem.query.get(item.id)
         assert stored_item == item
 
-    def test_invalid_ticker(self, db, with_rollback):
+    def test_invalid_ticker(self, db, db_rollback):
         with pytest.raises(Exception):
             item = WatchlistItem(
                 ticker=None,
@@ -193,7 +205,7 @@ class TestWatchlistItem:
             db.session.add(item)
             db.session.commit()
 
-    def test_invalid_quantity(self, db, with_rollback):
+    def test_invalid_quantity(self, db, db_rollback):
         with pytest.raises(Exception):
             item = WatchlistItem(
                 ticker="AAPL",
@@ -206,7 +218,7 @@ class TestWatchlistItem:
             db.session.add(item)
             db.session.commit()
 
-    def test_invalid_price(self, db, with_rollback):
+    def test_invalid_price(self, db, db_rollback):
         with pytest.raises(Exception):
             item = WatchlistItem(
                 ticker="AAPL",
@@ -219,7 +231,7 @@ class TestWatchlistItem:
             db.session.add(item)
             db.session.commit()
 
-    def test_invalid_side(self, db, with_rollback):
+    def test_invalid_side(self, db, db_rollback):
         with pytest.raises(Exception):
             item = WatchlistItem(
                 ticker="AAPL",
@@ -232,7 +244,7 @@ class TestWatchlistItem:
             db.session.add(item)
             db.session.commit()
 
-    def test_invalid_trade_date(self, db, with_rollback):
+    def test_invalid_trade_date(self, db, db_rollback):
         with pytest.raises(Exception):
             item = WatchlistItem(
                 ticker="AAPL",
