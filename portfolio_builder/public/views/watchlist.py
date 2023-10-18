@@ -11,7 +11,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
-    get_securities, get_watchlists, get_watch_items
+    get_securities, get_watchlist, get_watchlists, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -42,7 +42,6 @@ def index() -> str:
         item.name
         for item in get_watchlists(
             filter=[Watchlist.user_id==current_user.id], # type: ignore 
-            select=[Watchlist.name]
         )
     ]
     select_form = SelectWatchlistForm()
@@ -110,9 +109,10 @@ def delete_watchlist() -> Response:
         return redirect(url_for('watchlist.index'))
     else:
         watch_name = request.form.get('watchlist_group_removed')
-        watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
-        watchlist = next(iter(watchlists), Watchlist())
-        if watchlist.id:
+        watchlist = get_watchlist(filter=[Watchlist.name==watch_name])
+        if not watchlist:
+            flash(f"The watchlist '{watch_name}' does not exist.")
+        else:
             db.session.delete(watchlist)
             db.session.commit()
             flash(f"The watchlist '{watch_name}' has been deleted.")
@@ -133,9 +133,8 @@ def add(watch_name: str) -> Response:
     """
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        watchlists = get_watchlists(filter=[Watchlist.name==watch_name])
-        watchlist = next(iter(watchlists), Watchlist())
-        if not watchlist.id:
+        watchlist = get_watchlist(filter=[Watchlist.name==watch_name])
+        if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
             item = WatchlistItem(

@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.engine.row import Row
@@ -187,7 +187,7 @@ def get_grouped_watch_items(filter: List[BinaryExpression]) -> List[Row[Tuple[An
     return grouped_items
 
 
-def get_watchlist(filter: List[BinaryExpression]) -> Query[Watchlist]:
+def query_watchlist(filter: List[BinaryExpression]) -> Query[Watchlist]:
     query = (
         db
         .session
@@ -196,17 +196,21 @@ def get_watchlist(filter: List[BinaryExpression]) -> Query[Watchlist]:
     )
     return query
 
+def get_watchlist(filter: List[BinaryExpression]) -> Optional[Watchlist]:
+    item = query_watchlist(filter).first()
+    return item
+
 
 def get_watchlists(
     filter: List[BinaryExpression],
-    select: List[Any] = [Watchlist],
+    select: List[Any] = [Watchlist.name],
     orderby: List[Any] = [Watchlist.id]
-) -> List[Watchlist]:
-    query = get_watchlist(filter)
-    watchlists = (
+) -> List[Row[Tuple[Any, Any]]]:
+    query = query_watchlist(filter)
+    items = (
         query
         .with_entities(*select)
         .order_by(*orderby)
         .all()
-    )    
-    return watchlists
+    )
+    return items

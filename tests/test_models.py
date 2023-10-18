@@ -1,5 +1,6 @@
 import datetime as dt
 import pytest
+from sqlalchemy import column
 from sqlalchemy.exc import IntegrityError, DataError
 
 from portfolio_builder.public.models import (
@@ -126,12 +127,17 @@ class TestWatchlist:
         user_id = 1
         watchlist1 = Watchlist(name="Watchlist 1", user_id=user_id)
         watchlist2 = Watchlist(name="Watchlist 2", user_id=user_id)
-        db.session.add_all([watchlist1, watchlist2])
+        watchlists = [watchlist1, watchlist2]
+        db.session.add_all(watchlists)
         db.session.commit()
-        watchlists = get_watchlists([Watchlist.user_id == user_id])
+        stored_watchlists = get_watchlists(
+            filter=[Watchlist.user_id == user_id],
+            select=[Watchlist.name, Watchlist.user_id]
+        )
         assert len(watchlists) == 2
-        assert watchlists[0] == watchlist1
-        assert watchlists[1] == watchlist2
+        for stored_watch, watch in zip(stored_watchlists, watchlists):
+            assert stored_watch.name == watch.name
+            assert stored_watch.user_id == watch.user_id
 
     def test_create_watchlist_with_null_name(self, db, with_rollback):
         with pytest.raises(IntegrityError):
