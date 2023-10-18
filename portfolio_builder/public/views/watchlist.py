@@ -11,7 +11,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
-    get_securities, get_watchlist, get_watchlists, get_watch_items
+    get_securities, get_watchlist, get_watchlists, get_watch_item, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -175,14 +175,15 @@ def update(watch_name: str, ticker: str) -> Response:
     """
     add_item_form = AddItemForm()
     if add_item_form.validate_on_submit():
-        last_items = get_watch_items(filter=[
+        last_item = get_watch_item(filter=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
         ])
-        last_item = next(iter(last_items), WatchlistItem())
-        if last_item.id:
+        if not last_item:
+            flash(f"There are no items of ticker '{ticker}' to update.")
+        else:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
                 ticker=add_item_form.ticker.data, 
@@ -214,20 +215,25 @@ def delete(watch_name: str, ticker: str) -> Response:
     Returns:
         Response: Redirects the user to the watchlist index page.
     """
-    items = get_watch_items(filter=[
-        Watchlist.user_id==current_user.id, # type: ignore
-        Watchlist.name == watch_name,
-        WatchlistItem.ticker == ticker,
-    ])
-    if not items:
+    ids = [
+        item.id
+        for item in get_watch_items(
+            filter=[
+                Watchlist.user_id==current_user.id, # type: ignore
+                Watchlist.name == watch_name,
+                WatchlistItem.ticker == ticker,
+            ],
+            select=[WatchlistItem.id]
+        )
+    ]
+    if not ids:
         flash(
             f"An error occurred while trying to delete " + 
             f"the items of ticker '{ticker}' from watchlist '{watch_name}'."
         )
     else:
-        for item in items:
-            db.session.delete(item)
-            db.session.commit()
+        db.session.query(WatchlistItem).filter(WatchlistItem.id.in_(ids)).delete()
+        db.session.commit()
         flash(
             f"The items of ticker '{ticker}' have been deleted " + 
             f"from watchlist '{watch_name}'."

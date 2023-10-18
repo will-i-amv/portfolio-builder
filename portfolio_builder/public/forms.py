@@ -11,7 +11,7 @@ from wtforms import (
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_watch_item, get_default_date, 
+    get_watchlist, get_watch_item, get_watch_items, get_default_date, 
     Security, Watchlist, WatchlistItem
 )
 
@@ -29,16 +29,13 @@ class AddWatchlistForm(FlaskForm):
     submit = SubmitField("Add")
 
     def validate_name(self, name: StringField) -> None:
-        name_check = (
-            Watchlist
-            .query
-            .filter_by(user_id=current_user.id, name=name.data) # type: ignore
-            .first()
-        )
-        if name_check is not None:
-            raise v.ValidationError(
-                "There is already a watchlist with the same name"
-            )
+        input_name = name.data
+        watch_obj = get_watchlist(filter=[
+            Watchlist.user_id==current_user.id, # type: ignore
+            Watchlist.name==input_name,
+        ])
+        if watch_obj:
+            raise v.ValidationError(f"The watchlist {input_name} already exists.")
 
 
 class AddItemForm(FlaskForm):
@@ -78,16 +75,17 @@ class AddItemForm(FlaskForm):
     submit = SubmitField("Add to Watchlist")
 
     def validate_ticker(self, ticker: StringField) -> None:
+        input_ticker = ticker.data
         ticker_db = (
             db
             .session
             .query(Security)
-            .filter(Security.ticker==ticker.data)
+            .filter(Security.ticker==input_ticker)
             .first()
         )
         if not ticker_db:
             raise v.ValidationError(
-                f'The ticker "{ticker.data}" is unavailable.'
+                f'The ticker "{input_ticker}" is unavailable.'
             )
 
     def validate_trade_date(self, trade_date: DateField):
@@ -109,49 +107,49 @@ class AddItemForm(FlaskForm):
             raise v.ValidationError(
                 "The trade date cannot be a date in the future."
             )
-        last_trade_date = (
+        potential_trade_date = (
             get_watch_item(filter=[
                 Watchlist.name == self.watch_name.data,
                 WatchlistItem.ticker == self.ticker.data,
+                WatchlistItem.is_last_trade == True,
             ])
-            .with_entities(
-                WatchlistItem.trade_date
-            )
-            .order_by(WatchlistItem.trade_date.desc())
-            .first()
         )
-        if last_trade_date:
-            last_trade_date = next(iter(last_trade_date), '')
+        if not potential_trade_date:
+            pass
+        else:
+            last_trade_date = potential_trade_date.trade_date
             if input_trade_date < last_trade_date:
                 raise v.ValidationError(
                     f"The last trade date for ticker '{self.ticker.data}' " + 
-                    "is {last_trade_date}, the new date can't be before that."
+                    f"is {last_trade_date}, the new date can't be before that."
                 )
 
     def validate_side(self, side: SelectField) -> None:
         input_side = side.data
         total_amount = self.price.data * self.quantity.data
         if input_side == 'sell':
-            net_assets = (
-                get_watch_item(filter=[
-                    Watchlist.name == self.watch_name.data,
-                    WatchlistItem.ticker == self.ticker.data,
-                ])
-                .with_entities(
-                    func.sum(
-                        WatchlistItem.quantity * WatchlistItem.price * case(
-                            (WatchlistItem.side == 'buy', 1),
-                            (WatchlistItem.side == 'sell', (-1)),
+            net_assets = [ 
+                item.flows
+                for item in get_watch_items(
+                    filter=[
+                        Watchlist.name == self.watch_name.data,
+                        WatchlistItem.ticker == self.ticker.data,
+                    ],
+                    select=[
+                        func.sum(
+                            WatchlistItem.quantity * WatchlistItem.price * case(
+                                (WatchlistItem.side == 'buy', 1),
+                                (WatchlistItem.side == 'sell', (-1)),
+                            )
                         )
-                    )
-                    .label('flows')
+                        .label('flows')
+                    ]
                 )
-                .first()
-            )
-            net_assets = next(iter(net_assets), '')
-            if not net_assets:
+            ]
+            net_asset = next(iter(net_assets), 0.0)
+            if not net_asset:
                 raise v.ValidationError(f"You can't sell if your portfolio is empty.")
-            elif total_amount > net_assets: 
+            elif total_amount > net_asset: 
                 raise v.ValidationError(
                     f"You tried to sell USD {total_amount} worth of '{self.ticker.data}'," + 
                     f"but you only have USD {net_assets} in total." 
