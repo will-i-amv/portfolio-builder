@@ -60,22 +60,50 @@ def db_teardown(db):
 
 
 class TestSecurity:
-    # create a Security instance with valid parameters
-    def test_create_valid_instance(self, db, db_teardown):
-        security = Security(name="Apple Inc.", ticker="AAPL", exchange="NASDAQ")
-        assert security.name == "Apple Inc."
-        assert security.ticker == "AAPL"
-        assert security.exchange == "NASDAQ"
-        price = Price(date=dt.date(2023, 1, 1), close_price=100.0)
-        security.prices.append(price)
-        assert len(security.prices) == 1 # type: ignore
-        assert security.prices[0] == price # type: ignore
-        db.session.add(security)
+    def test_create_rows(self, db, db_teardown, securities):
+        new_securities = [
+            Security(name="Alphabet Inc.", ticker="GOOG", exchange="NASDAQ"),
+            Security(name="Meta Platforms Inc.", ticker="META", exchange="NASDAQ")
+        ]
+        len_sec_before = len(securities)
+        db.session.add_all(new_securities)
         db.session.commit()
-        stored_security = Security.query.get(security.id)
-        assert stored_security == security
+        securities_after = db.session.query(Security).all()
+        len_sec_after = len(securities_after)
+        assert len_sec_after - len_sec_before == len(new_securities)
 
-    def test_create_instances_with_null_values(self, db, db_teardown):
+    def test_get_row(self, db, db_teardown, securities):
+        security = random.choice(securities)
+        stored_security = db.session.query(Security).filter_by(ticker=security.ticker).first()
+        assert stored_security is not None
+        assert stored_security.name == security.name
+        assert stored_security.exchange == security.exchange
+
+    def test_get_all_rows(self, db, db_teardown, securities):
+        all_securities = db.session.query(Security).all()
+        assert len(all_securities) == len(securities)
+
+    def test_update_row(self, db, db_teardown, securities):
+        security = random.choice(securities)
+        security.name = "New Name"
+        security.ticker = "NEW"
+        security.exchange = "NYSE"
+        db.session.commit()
+        updated_security = db.session.query(Security).filter_by(id=security.id).first()
+        assert updated_security.name == security.name
+        assert updated_security.ticker == security.ticker
+        assert updated_security.exchange == security.exchange
+
+    def test_delete_row(self, db, db_teardown, securities):
+        len_sec_before = len(securities)
+        security_to_delete = random.choice(securities)
+        db.session.delete(security_to_delete)
+        db.session.commit()
+        securities_after = db.session.query(Security).all()
+        len_sec_after = len(securities_after)
+        assert len_sec_before - len_sec_after == 1
+
+    def test_create_rows_null_mandatory_fields(self, db, db_teardown):
         for attr in ['name', 'ticker', 'exchange']:
             with pytest.raises(IntegrityError):
                 invalid_sec = Security(name="Apple Inc.", ticker="AAPL", exchange="NASDAQ")
@@ -84,7 +112,6 @@ class TestSecurity:
                 db.session.commit()
             db.session.rollback()
 
-
 class TestPrice:
 
     def test_create_valid_instance(self, db, securities):
@@ -92,7 +119,7 @@ class TestPrice:
         price = Price(date=dt.date(2022, 1, 1), close_price=10.0, ticker_id=sec.id)
         assert price.date == dt.date(2022, 1, 1)
         assert price.close_price == 10.0
-        assert price.ticker_id == 1
+        assert price.ticker_id == sec.id
         db.session.add(price)
         db.session.commit()
         stored_price = Price.query.get(price.id)
