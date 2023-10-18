@@ -2,6 +2,7 @@ import datetime as dt
 import random
 
 import pytest
+from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
@@ -41,6 +42,18 @@ def prices(db, securities):
     db.session.add_all(prices)
     db.session.commit()
     yield prices
+
+
+@pytest.fixture(scope='function')
+def watchlists(db):
+    watchlists = [
+        Watchlist(name="Technology", user_id=1),
+        Watchlist(name="Real Estate", user_id=1),
+        Watchlist(name="Oil and Gas", user_id=1),
+    ]
+    db.session.add_all(watchlists)
+    db.session.commit()
+    yield watchlists
 
 
 @pytest.fixture(scope='function')
@@ -285,78 +298,78 @@ class TestWatchlistItem:
             db.session.commit()
 
 
-class TestGetSecurities:
 
-    def test_returns_list_of_security_objects(self, db, db_teardown):
-        securities = []
-        security1 = Security(
-            name="Security 1", 
-            ticker="TICKER1", 
-            exchange="EXCHANGE1", 
-            currency="USD", 
-            country="Country 1", 
-            isin="ISIN1"
-        )
-        security2 = Security(
-            name="Security 2", 
-            ticker="TICKER2", 
-            exchange="EXCHANGE2", 
-            currency="EUR", 
-            country="Country 2", 
-            isin="ISIN2"
-        )
-        securities.extend([security1, security2])
-        db.session.add_all(securities)
+class TestGetWatchlists:
+
+    def test_matching_filter(self, watchlists):
+        watchlist = random.choice(watchlists)
+        result = get_watchlists(filter=[Watchlist.name == watchlist.name])
+        assert isinstance(result, list)
+        assert len(result) > 0
+    
+    def test_not_matching_filter(self, db):
+        result = get_watchlists(filter=[Watchlist.name == 'Nonexistent Watchlist'])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    # Returns an empty list when no watchlists exist in the database
+    def test_empty_watchlists_table(self, db):
+        db.session.query(Watchlist).delete()
         db.session.commit()
-        stored_securities = get_securities()
-        assert isinstance(securities, list)
-        assert len(stored_securities) == len(securities)
-        for sec, stored_sec in zip(securities, stored_securities):
-            assert isinstance(stored_sec, Security)
-            assert stored_sec.name == sec.name
-            assert stored_sec.ticker == sec.ticker
-            assert stored_sec.exchange == sec.exchange
-            assert stored_sec.currency == sec.currency
-            assert stored_sec.country == sec.country
-            assert stored_sec.isin == sec.isin
+        result = get_watchlists([])
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-    def test_returns_empty_list(self):
-        securities = get_securities()
-        assert isinstance(securities, list)
-        assert len(securities) == 0
+    def test_default_columns_param(self):
+        result = get_watchlists(filter=[])
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.name, str) for item in result)
 
-    def test_returns_list_one_price_object(self, db, db_teardown):
-        security = Security(
-            name="Security 1", 
-            ticker="TICKER1", 
-            exchange="EXCHANGE1", 
-            currency="USD", 
-            country="Country 1", 
-            isin="ISIN1"
+    def test_valid_columns_param(self):
+        result = get_watchlists(filter=[], select=[Watchlist.id, Watchlist.user_id])
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.id, int) for item in result)
+        assert all(isinstance(item.user_id, int) for item in result)
+
+    def test_default_orderby_param(self):
+        result = [
+            item.id
+            for item in get_watchlists(filter=[], select=[Watchlist.id])
+        ]
+        assert all(
+            result[i] <= result[i+1] 
+            for i in range(len(result)-1)
         )
-        db.session.add(security)
-        db.session.commit()
-        price = Price(date=dt.date(2022, 1, 1), close_price=10.0, ticker_id=security.id)
-        db.session.add(price)
-        db.session.commit()
-        securities = get_securities()
-        for sec in securities:
-            assert len(sec.prices) == 1 # type: ignore
-            assert isinstance(sec.prices[0], Price) # type: ignore
-            assert sec.prices[0].date == dt.date(2022, 1, 1) # type: ignore
-            assert sec.prices[0].close_price == 10.0 # type: ignore
 
-    def test_returns_empty_list_no_price_objects(self, db, db_teardown):
-        security = Security(
-            name="Security 1", 
-            ticker="TICKER1", 
-            exchange="EXCHANGE1", 
-            currency="USD", 
-            country="Country 1", 
-            isin="ISIN1"
+    def test_orderby_asc(self):
+        result = [
+            item.name
+            for item in get_watchlists(filter=[], orderby=[Watchlist.name])
+        ]
+        assert all(
+            result[i] <= result[i+1] 
+            for i in range(len(result)-1)
         )
-        db.session.add(security)
-        db.session.commit()
-        securities = get_securities()
-        assert len(securities[0].prices) == 0 # type: ignore
 
+    def test_orderby_desc(self):
+        result = [
+            item.name
+            for item in get_watchlists(filter=[], orderby=[Watchlist.name.desc()])
+        ]
+        assert all(
+            result[i] >= result[i+1] 
+            for i in range(len(result)-1)
+        )
+
+    def test_raises_error_invalid_filter_param(self):
+        with pytest.raises(AttributeError):
+            get_watchlists(filter=[Watchlist.invalid_column == 0])
+
+    def test_raises_error_invalid_select_param(self):
+        with pytest.raises(AttributeError):
+            get_watchlists(filter=[], select=[Watchlist.invalid_column])
+
+    # Raises an error when given an invalid orderby parameter
+    def test_raises_error_invalid_orderby_param(self):
+        with pytest.raises(Exception):
+            get_watchlists(filter=[], orderby=[Watchlist.invalid_column])
