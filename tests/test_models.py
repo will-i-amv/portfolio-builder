@@ -1,4 +1,5 @@
 import datetime as dt
+from decimal import Decimal
 import random
 
 import pytest
@@ -6,7 +7,7 @@ from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
-    Security, Price, Watchlist, WatchlistItem,  get_securities, 
+    Security, Price, Watchlist, WatchlistItem, get_securities, get_prices, 
     get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
 )
 
@@ -31,13 +32,13 @@ def prices(db, securities):
     prices = [
         Price(date=dt.date(2023, 10, 10), close_price=175.0, ticker_id=aapl_sec.id),
         Price(date=dt.date(2023, 10, 11), close_price=180.0, ticker_id=aapl_sec.id),
-        Price(date=dt.date(2023, 110, 12), close_price=170.0, ticker_id=aapl_sec.id),
+        Price(date=dt.date(2023, 10, 12), close_price=170.0, ticker_id=aapl_sec.id),
         Price(date=dt.date(2023, 10, 10), close_price=131.0, ticker_id=amzn_sec.id),
         Price(date=dt.date(2023, 10, 11), close_price=126.0, ticker_id=amzn_sec.id),
-        Price(date=dt.date(2023, 110, 12), close_price=132.0, ticker_id=amzn_sec.id),
+        Price(date=dt.date(2023, 10, 12), close_price=132.0, ticker_id=amzn_sec.id),
         Price(date=dt.date(2023, 10, 10), close_price=331.0, ticker_id=msft_sec.id),
         Price(date=dt.date(2023, 10, 11), close_price=334.0, ticker_id=msft_sec.id),
-        Price(date=dt.date(2023, 110, 12), close_price=330.0, ticker_id=msft_sec.id),
+        Price(date=dt.date(2023, 10, 12), close_price=330.0, ticker_id=msft_sec.id),
     ]
     db.session.add_all(prices)
     db.session.commit()
@@ -617,3 +618,89 @@ class TestGetFirstWatchItem:
         result = get_first_watch_item(filters=[WatchlistItem.ticker.like(f'{pattern}%')])
         assert isinstance(result, WatchlistItem)
         assert pattern in result.ticker
+
+
+class TestGetPrices:
+
+    def test_returns_list_of_prices_with_valid_filters(self, prices, db_teardown):
+        # Returns a list of prices when given valid filters
+        price = random.choice(prices)
+        result = get_prices(filters=[Price.ticker_id == price.ticker_id])
+        assert isinstance(result, list)
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.date, dt.date) for item in result)
+        assert all(isinstance(item.close_price, Decimal) for item in result)
+
+    def test_can_handle_filters_with_multiple_conditions(self, prices):
+        # Can handle filters with multiple valid filters
+        price = random.choice(prices)
+        result = get_prices(filters=[
+            Price.date >= price.date,
+            Price.close_price == price.close_price,
+            Price.ticker_id == price.ticker_id,
+        ])
+        assert isinstance(result, list)
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.date, dt.date) for item in result)
+        assert all(isinstance(item.close_price, Decimal) for item in result)
+
+    def test_returns_prices_default_orderby(self, prices, db_teardown):
+        # Returns prices sorted by date when orderby is not specified
+        price = random.choice(prices)
+        result = get_prices(filters=[Price.ticker_id == price.ticker_id])
+        assert all(
+            result[i].date <= result[i+1].date 
+            for i in range(len(result)-1)
+        )
+
+    def test_returns_prices_sorted_by_specified_orderby_field(self, prices):
+        # Returns prices sorted by the specified orderby field
+        price = random.choice(prices)
+        result = get_prices(
+            filters=[Price.ticker_id == price.ticker_id],
+            orderby = [Price.close_price.desc()]
+        )
+        assert all(
+            result[i].close_price >= result[i+1].close_price 
+            for i in range(len(result)-1)
+        )
+
+    def test_returns_only_specified_entities(self, prices):
+        # Returns only the specified entities
+        price = random.choice(prices)
+        entities = [Price.date]
+        result = get_prices(
+            filters=[Price.ticker_id == price.ticker_id],
+            entities=entities
+        )
+        assert all((len(row) == len(entities)) for row in result)
+        assert all(isinstance(row.date, dt.date) for row in result)
+
+    def test_returns_prices_for_single_security_with_filter_for_single_security(self, securities):
+        # Returns prices for a single security when given a filter for a single security
+        security = random.choice(securities)
+        filters = [Security.id == security.id]
+        result = get_prices(filters=filters)
+        assert all(item.ticker_id == security.id for item in result)
+
+    def test_returns_empty_list_when_no_prices_match_filters(self, db_teardown):
+        # Returns an empty list when no prices match the filters
+        result = get_prices(filters=[Price.date < dt.date(2020, 1, 1)])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_raises_error_invalid_filter_param(self, db_rollback):
+        # Raises an error when given an invalid filter
+        with pytest.raises(AttributeError):
+            get_prices(filters=[Price.invalid_column == 0])
+
+    # Returns an empty list when given an invalid orderby field
+    def test_raises_error_invalid_orderby_param(self, db_rollback):
+        # Raises an error when given an invalid entity
+        with pytest.raises(AttributeError):
+            get_prices(filters=[], orderby=[Price.invalid_column])
+
+    def test_raises_error_invalid_entity_param(self, db_rollback):
+        # Raises an error when given an invalid orderby
+        with pytest.raises(AttributeError):
+            get_prices(filters=[], entities = [Price.invalid_column])
