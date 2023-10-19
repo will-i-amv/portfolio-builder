@@ -1,5 +1,6 @@
 import datetime as dt
 from decimal import Decimal
+from queue import PriorityQueue
 import random
 
 import pytest
@@ -704,3 +705,49 @@ class TestGetPrices:
         # Raises an error when given an invalid orderby
         with pytest.raises(AttributeError):
             get_prices(filters=[], entities = [Price.invalid_column])
+
+
+
+class TestGetSecurities:
+
+    def test_returns_default_filter_by_ticker(self, securities):
+        # Returns a list of securities with default entities and orderby parameters 
+        # when no filters are provided
+        security = random.choice(securities)
+        result = get_securities(filters=[Security.ticker == security.ticker])
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.name, str) for item in result)
+        assert all(isinstance(item.ticker, str) for item in result)
+        assert all(isinstance(item.exchange, str) for item in result)
+
+    # Returns a list of securities with specified entities and orderby parameters when no filters are provided
+    def test_returns_default_filter_by_name(self, securities, db_teardown):
+        # when no filters are provided
+        security = random.choice(securities)
+        result = get_securities(filters=[Security.name == security.name])
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.name, str) for item in result)
+        assert all(isinstance(item.ticker, str) for item in result)
+        assert all(isinstance(item.exchange, str) for item in result)
+
+    def test_returns_empty_list_no_match_filters(self, db_teardown):
+        # Returns an empty list when no securities match the provided filters
+        result = get_securities(filters=[Security.country == 'Nonexistent Country'])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_returns_list_filters_al(self, db, securities, db_teardown):
+        # Returns a list of securities when there are no filters (all rows returned)
+        result = get_securities(filters=[db.literal(True)])
+        assert isinstance(result, list)
+        assert len(result) == len(securities)
+
+    def test_raises_exception_invalid_filter(self, db_rollback):
+        # Raises an exception when an invalid filter is provided
+        with pytest.raises(AttributeError):
+            filter = [Security.invalid_column == 'Invalid Value']
+            get_securities(filters=filter)
