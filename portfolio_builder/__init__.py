@@ -57,7 +57,7 @@ def create_app(settings_name: str) -> Flask:
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(watchlist_bp)
 
-    from portfolio_builder.tasks import load_prices_all_tickers
+    from portfolio_builder.public.tasks import load_prices_all_tickers
     scheduler.add_job(
         id='update_db_last_prices',
         func=load_prices_all_tickers, 

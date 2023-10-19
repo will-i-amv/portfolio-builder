@@ -13,7 +13,7 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
     get_securities, get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
 )
-from portfolio_builder.tasks import load_prices_ticker
+from portfolio_builder.public.tasks import load_prices_ticker
 
 
 bp = Blueprint("watchlist", __name__, url_prefix="/watchlist")

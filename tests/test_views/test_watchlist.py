@@ -6,7 +6,7 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Security,
     get_watch_items
 )
-from portfolio_builder.tasks import load_securities_csv
+from portfolio_builder.public.tasks import load_securities_csv
 
 
 def _get_messages(sesssion):
