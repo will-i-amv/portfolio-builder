@@ -1,6 +1,5 @@
 import datetime as dt
 import random
-from turtle import position
 
 import pytest
 from sqlalchemy.engine.row import Row
@@ -8,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
     Security, Price, Watchlist, WatchlistItem, 
-    get_securities, get_watchlists, get_watch_items
+    get_securities, get_watchlist, get_watchlists, get_watch_items
 )
 
 
@@ -491,3 +490,35 @@ class TestGetWatchItems:
                 filter=[WatchlistItem.ticker == watch_item.ticker], 
                 orderby = [WatchlistItem.invalid_column],
             )
+
+
+class TestGetWatchlist:
+
+    def test_returns_first_valid_filter(self, watchlists, db_teardown):
+        # Returns first Watchlist object when a valid filter is provided
+        watchlist = random.choice(watchlists)
+        result = get_watchlist(filter=[Watchlist.name == watchlist.name])
+        assert isinstance(result, Watchlist)
+
+    def test_returns_none_no_match(self, db_teardown):
+        # Returns None when no Watchlist matches the filter
+        result = get_watchlist(filter=[Watchlist.name == "Nonexistent Watchlist"])
+        assert result is None
+
+    def test_returns_first_multiple_match(self, watchlists):
+        # Returns first Watchlist object that matches the filter 
+        # that multiple Watchlists match.
+        watchlist = random.choice(watchlists)
+        result = get_watchlist(filter=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
+        assert isinstance(result, Watchlist)
+
+    def test_returns_first_all_filter(self, db_teardown):
+        # Returns one Watchlist object when a 'match_all' filter is provided
+        result = get_watchlist(filter=[])
+        assert result is not None
+        assert isinstance(result, Watchlist)
+
+    def test_raise_error_invalid_filter(self, db_rollback):
+        # Raises an error when an invalid filter is provided
+        with pytest.raises(AttributeError):
+            get_watchlist(filter=[Watchlist.invalid_column == "Invalid"])
