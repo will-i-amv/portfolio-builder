@@ -574,3 +574,46 @@ class TestGetFirstWatchlist:
         with pytest.raises(AttributeError):
             get_first_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
 
+
+class TestGetFirstWatchItem:
+
+    def test_returns_first_valid_ticker_filter(self, watch_items, db_teardown):
+        # Returns the first WatchlistItem when given a valid list 
+        # of ticker filters
+        watch_item = random.choice(watch_items)
+        result = get_first_watch_item(filters=[
+            WatchlistItem.ticker == watch_item.ticker
+        ])
+        assert isinstance(result, WatchlistItem)
+        assert len([result]) == 1
+        assert result.ticker == watch_item.ticker
+
+    def test_returns_first_valid_trade_date_filter(self, watch_items, db_teardown):
+        # Returns the first WatchlistItem when given a valid list 
+        # of trade_date filters
+        watch_item = random.choice(watch_items)
+        result = get_first_watch_item(filters=[
+            WatchlistItem.trade_date == watch_item.trade_date, 
+        ])
+        assert isinstance(result, WatchlistItem)
+        assert len([result]) == 1
+        assert result.trade_date == watch_item.trade_date
+
+    def test_returns_none_no_match(self, db_teardown):
+        # Returns None when no WatchlistItem matches the given filters
+        result = get_first_watch_item(filters=[WatchlistItem.ticker == "Nonexistent Ticker"])
+        assert result is None
+
+    # Returns None when given an empty list of filters
+    def test_returns_none_empty_filters(self, db_teardown):
+        result = get_first_watch_item(filters=[])
+        assert result is None
+
+    def test_returns_correct_item_multiple_matches(self, watch_items, db_teardown):
+        # Returns the correct WatchlistItem when there 
+        # are multiple matches for the given filters
+        watch_item = random.choice(watch_items)
+        pattern = watch_item.ticker[:1]
+        result = get_first_watch_item(filters=[WatchlistItem.ticker.like(f'{pattern}%')])
+        assert isinstance(result, WatchlistItem)
+        assert pattern in result.ticker
