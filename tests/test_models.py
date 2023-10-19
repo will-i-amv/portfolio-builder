@@ -6,8 +6,8 @@ from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
-    Security, Price, Watchlist, WatchlistItem, 
-    get_securities, get_first_watchlist, get_watchlists, get_watch_items
+    Security, Price, Watchlist, WatchlistItem,  get_securities, 
+    get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
 )
 
 
@@ -65,24 +65,75 @@ def watch_items(db, watchlists):
             quantity = 10,
             price = 170.0,
             side = 'buy',
-            trade_date = dt.date.today(),
+            trade_date = dt.date(2023, 10, 10),
+            watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'AAPL',
+            quantity = 5,
+            price = 168.0,
+            side = 'buy',
+            trade_date = dt.date(2023, 10, 11),
+            watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'AAPL',
+            quantity = 5,
+            price = 173.0,
+            side = 'sell',
+            trade_date = dt.date(2023, 10, 12),
+            watchlist_id=watchlist.id,
+            is_last_trade=True,
+        ),
+        WatchlistItem(
+            ticker = 'AMZN',
+            quantity = 15,
+            price = 130.0,
+            side = 'buy',
+            trade_date = dt.date(2023, 10, 10),
             watchlist_id=watchlist.id,
         ),
         WatchlistItem(
             ticker = 'AMZN',
-            quantity = 20,
-            price = 130.0,
+            quantity = 3,
+            price = 132.0,
+            side = 'sell',
+            trade_date = dt.date(2023, 10, 11),
+            watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'AMZN',
+            quantity = 5,
+            price = 125.0,
             side = 'buy',
-            trade_date = dt.date.today(),
+            trade_date = dt.date(2023, 10, 12),
+            watchlist_id=watchlist.id,
+            is_last_trade=True,
+        ),
+        WatchlistItem(
+            ticker = 'MSFT',
+            quantity = 6,
+            price = 330.0,
+            side = 'buy',
+            trade_date = dt.date(2023, 10, 10),
             watchlist_id=watchlist.id,
         ),
         WatchlistItem(
             ticker = 'MSFT',
-            quantity = 5,
-            price = 320.0,
-            side = 'buy',
-            trade_date = dt.date.today(),
+            quantity = 1,
+            price = 335.0,
+            side = 'sell',
+            trade_date = dt.date(2023, 10, 11),
             watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'MSFT',
+            quantity = 3,
+            price = 338.0,
+            side = 'sell',
+            trade_date = dt.date(2023, 10, 12),
+            watchlist_id=watchlist.id,
+            is_last_trade=True,
         ),
     ]
     db.session.add_all(items)
@@ -522,3 +573,4 @@ class TestGetFirstWatchlist:
         # Raises an error when an invalid filter is provided
         with pytest.raises(AttributeError):
             get_first_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
+
