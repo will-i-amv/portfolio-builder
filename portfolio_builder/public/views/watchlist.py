@@ -11,7 +11,7 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
-    get_securities, get_watchlist, get_watchlists, get_watch_item, get_watch_items
+    get_securities, get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
 )
 from portfolio_builder.tasks import load_prices_ticker
 
@@ -109,7 +109,7 @@ def delete_watchlist() -> Response:
         return redirect(url_for('watchlist.index'))
     else:
         watch_name = request.form.get('watchlist_group_removed')
-        watchlist = get_watchlist(filters=[Watchlist.name==watch_name])
+        watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -135,7 +135,7 @@ def add(watch_name: str) -> Response:
     if add_item_form.errors:
         flash_errors(add_item_form)
     elif add_item_form.validate_on_submit():
-        watchlist = get_watchlist(filters=[Watchlist.name==watch_name])
+        watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -177,7 +177,7 @@ def update(watch_name: str, ticker: str) -> Response:
     if add_item_form.errors:
         flash_errors(add_item_form)
     elif add_item_form.validate_on_submit():
-        last_item = get_watch_item(filters=[
+        last_item = get_first_watch_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,

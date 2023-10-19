@@ -149,7 +149,9 @@ def query_watch_item(filters: List[BinaryExpression]) -> Query[WatchlistItem]:
     return query
 
 
-def get_watch_item(filters: List[BinaryExpression]) -> Optional[WatchlistItem]:
+def get_first_watch_item(
+    filters: List[BinaryExpression]
+) -> Optional[WatchlistItem]:
     item = query_watch_item(filters).first()
     return item
 
@@ -208,7 +210,7 @@ def query_watchlist(filters: List[BinaryExpression]) -> Query[Watchlist]:
     )
     return query
 
-def get_watchlist(filters: List[BinaryExpression]) -> Optional[Watchlist]:
+def get_first_watchlist(filters: List[BinaryExpression]) -> Optional[Watchlist]:
     item = query_watchlist(filters).first()
     return item
 

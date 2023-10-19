@@ -11,7 +11,7 @@ from wtforms import (
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_watchlist, get_watch_item, get_watch_items, get_default_date, 
+    get_first_watchlist, get_first_watch_item, get_watch_items, get_default_date, 
     Security, Watchlist, WatchlistItem
 )
 
@@ -30,7 +30,7 @@ class AddWatchlistForm(FlaskForm):
 
     def validate_name(self, name: StringField) -> None:
         input_name = name.data
-        watch_obj = get_watchlist(filters=[
+        watch_obj = get_first_watchlist(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name==input_name,
         ])
@@ -108,7 +108,7 @@ class AddItemForm(FlaskForm):
                 "The trade date cannot be a date in the future."
             )
         potential_trade_date = (
-            get_watch_item(filters=[
+            get_first_watch_item(filters=[
                 Watchlist.name == self.watch_name.data,
                 WatchlistItem.ticker == self.ticker.data,
                 WatchlistItem.is_last_trade == True,

@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
     Security, Price, Watchlist, WatchlistItem, 
-    get_securities, get_watchlist, get_watchlists, get_watch_items
+    get_securities, get_first_watchlist, get_watchlists, get_watch_items
 )
 
 
@@ -497,28 +497,28 @@ class TestGetWatchlist:
     def test_returns_first_valid_filter(self, watchlists, db_teardown):
         # Returns first Watchlist object when a valid filter is provided
         watchlist = random.choice(watchlists)
-        result = get_watchlist(filters=[Watchlist.name == watchlist.name])
+        result = get_first_watchlist(filters=[Watchlist.name == watchlist.name])
         assert isinstance(result, Watchlist)
 
     def test_returns_none_no_match(self, db_teardown):
         # Returns None when no Watchlist matches the filter
-        result = get_watchlist(filters=[Watchlist.name == "Nonexistent Watchlist"])
+        result = get_first_watchlist(filters=[Watchlist.name == "Nonexistent Watchlist"])
         assert result is None
 
     def test_returns_first_multiple_match(self, watchlists):
         # Returns first Watchlist object that matches the filter 
         # that multiple Watchlists match.
         watchlist = random.choice(watchlists)
-        result = get_watchlist(filters=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
+        result = get_first_watchlist(filters=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
         assert isinstance(result, Watchlist)
 
     def test_returns_first_all_filter(self, db_teardown):
         # Returns one Watchlist object when a 'match_all' filter is provided
-        result = get_watchlist(filters=[])
+        result = get_first_watchlist(filters=[])
         assert result is not None
         assert isinstance(result, Watchlist)
 
     def test_raise_error_invalid_filter(self, db_rollback):
         # Raises an error when an invalid filter is provided
         with pytest.raises(AttributeError):
-            get_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
+            get_first_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
