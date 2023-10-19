@@ -1,5 +1,6 @@
 import datetime as dt
 import random
+from turtle import position
 
 import pytest
 from sqlalchemy.engine.row import Row
@@ -7,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
     Security, Price, Watchlist, WatchlistItem, 
-    get_securities, get_watchlists
+    get_securities, get_watchlists, get_watch_items
 )
 
 
@@ -54,6 +55,40 @@ def watchlists(db):
     db.session.add_all(watchlists)
     db.session.commit()
     yield watchlists
+
+
+@pytest.fixture(scope='function')
+def watch_items(db, watchlists):
+    watchlist = random.choice(watchlists)
+    items = [
+        WatchlistItem(
+            ticker = 'AAPL',
+            quantity = 10,
+            price = 170.0,
+            side = 'buy',
+            trade_date = dt.date.today(),
+            watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'AMZN',
+            quantity = 20,
+            price = 130.0,
+            side = 'buy',
+            trade_date = dt.date.today(),
+            watchlist_id=watchlist.id,
+        ),
+        WatchlistItem(
+            ticker = 'MSFT',
+            quantity = 5,
+            price = 320.0,
+            side = 'buy',
+            trade_date = dt.date.today(),
+            watchlist_id=watchlist.id,
+        ),
+    ]
+    db.session.add_all(items)
+    db.session.commit()
+    yield items
 
 
 @pytest.fixture(scope='function')
@@ -373,3 +408,86 @@ class TestGetWatchlists:
     def test_raises_error_invalid_orderby_param(self):
         with pytest.raises(Exception):
             get_watchlists(filter=[], orderby=[Watchlist.invalid_column])
+
+
+class TestGetWatchItems:
+
+    def test_returns_match_filter(self, watch_items, db_teardown):
+        # Returns a list of rows containing the selected columns 
+        # from WatchlistItem table, ordered by the given orderby parameter.
+        watch_item = random.choice(watch_items)
+        result = get_watch_items(filter=[WatchlistItem.ticker == watch_item.ticker])
+        assert len(result) > 0
+        assert isinstance(result, list)
+        assert all(isinstance(item, Row) for item in result)
+        assert all(isinstance(item.id, int) for item in result)
+        assert all(isinstance(item.ticker, str) for item in result)
+        assert all(isinstance(item.quantity, int) for item in result)
+        assert all(isinstance(item.price, float) for item in result)
+        assert all(isinstance(item.side, str) for item in result)
+        assert all(isinstance(item.trade_date, dt.date) for item in result)
+        assert all(item.ticker == watch_item.ticker for item in result)
+
+    def test_returns_match_all_filter(self, watch_items, db_teardown):
+        result = get_watch_items(filter=[])
+        assert len(result) == len(watch_items)
+    
+    def test_returns_no_match_filter(self, db):
+        # Returns an empty list if no rows match the given filter.
+        result = get_watch_items(filter=[
+            WatchlistItem.ticker == 'Nonexistent Ticker'
+        ])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_returns_selected_columns(self, watch_items):
+        # Returns only the columns specified in the select parameter.
+        watch_item = random.choice(watch_items)
+        filters = [WatchlistItem.ticker == watch_item.ticker]
+        select = [WatchlistItem.id, WatchlistItem.ticker]
+        result = get_watch_items(filter=filters, select=select)
+        assert all((len(row) == len(select)) for row in result)
+        assert all(isinstance(row.id, int) for row in result)
+        assert all(isinstance(row.ticker, str) for row in result)
+
+    def test_returns_rows_ascending_order(self, db):
+        # Returns rows in ascending order by default.
+        result = get_watch_items(filter=[WatchlistItem.ticker == 'AAPL'])
+        assert all(
+            result[i].id <= result[i+1].id 
+            for i in range(len(result)-1)
+        )
+
+    def test_returns_rows_descending_order(self, db):
+        # Returns rows in descending order if orderby parameter 
+        # is given with a descending order.
+        filter = [WatchlistItem.ticker == 'AAPL']
+        orderby = [WatchlistItem.id.desc()]
+        result = get_watch_items(filter=filter, orderby=orderby)
+        assert all(
+            result[i].id >= result[i+1].id 
+            for i in range(len(result)-1)
+        )
+
+    def test_returns_empty_list_invalid_filter(self, db, db_rollback):
+        # Raises an error if the filter parameter is invalid.
+        with pytest.raises(AttributeError):
+            get_watch_items(filter=[WatchlistItem.invalid_column == 0])
+
+    def test_returns_empty_list_invalid_select(self, watch_items, db_rollback):
+        # Raises an error if the select parameter is invalid.
+        watch_item = random.choice(watch_items)
+        with pytest.raises(AttributeError):
+            get_watch_items(
+                filter=[WatchlistItem.ticker == watch_item.ticker], 
+                select=[WatchlistItem.invalid_column]
+            )
+
+    def test_returns_empty_list_invalid_orderby(self, watch_items, db_rollback):
+        # Raises an error if the orderby parameter is invalid.
+        watch_item = random.choice(watch_items)
+        with pytest.raises(AttributeError):
+            get_watch_items(
+                filter=[WatchlistItem.ticker == watch_item.ticker], 
+                orderby = [WatchlistItem.invalid_column],
+            )
