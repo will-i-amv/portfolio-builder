@@ -159,6 +159,7 @@ class TestSecurity:
                 db.session.commit()
             db.session.rollback()
 
+
 class TestPrice:
 
     def test_create_valid_instance(self, db, securities):
@@ -332,7 +333,6 @@ class TestWatchlistItem:
             db.session.commit()
 
 
-
 class TestGetWatchlists:
 
     def test_matching_filter(self, watchlists):
@@ -341,7 +341,7 @@ class TestGetWatchlists:
         assert isinstance(result, list)
         assert len(result) > 0
     
-    def test_not_matching_filter(self, db):
+    def test_not_matching_filters(self, db):
         result = get_watchlists(filters=[Watchlist.name == 'Nonexistent Watchlist'])
         assert isinstance(result, list)
         assert len(result) == 0
@@ -354,12 +354,12 @@ class TestGetWatchlists:
         assert isinstance(result, list)
         assert len(result) == 0
 
-    def test_default_columns_param(self):
+    def test_default_entities_param(self):
         result = get_watchlists(filters=[])
         assert all(isinstance(item, Row) for item in result)
         assert all(isinstance(item.name, str) for item in result)
 
-    def test_valid_columns_param(self):
+    def test_valid_entities_param(self):
         result = get_watchlists(filters=[], entities=[Watchlist.id, Watchlist.user_id])
         assert all(isinstance(item, Row) for item in result)
         assert all(isinstance(item.id, int) for item in result)
@@ -395,11 +395,11 @@ class TestGetWatchlists:
             for i in range(len(result)-1)
         )
 
-    def test_raises_error_invalid_filter_param(self):
+    def test_raises_error_invalid_filters_param(self):
         with pytest.raises(AttributeError):
             get_watchlists(filters=[Watchlist.invalid_column == 0])
 
-    def test_raises_error_invalid_select_param(self):
+    def test_raises_error_invalid_entities_param(self):
         with pytest.raises(AttributeError):
             get_watchlists(filters=[], entities=[Watchlist.invalid_column])
 
@@ -492,7 +492,7 @@ class TestGetWatchItems:
             )
 
 
-class TestGetWatchlist:
+class TestGetFirstWatchlist:
 
     def test_returns_first_valid_filter(self, watchlists, db_teardown):
         # Returns first Watchlist object when a valid filter is provided
