@@ -60,7 +60,7 @@ def index() -> str:
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
-    securities = get_securities()
+    securities = get_securities(filters=[db.literal(True)])
     return render_template(
         "public/watchlist.html", 
         select_form=select_form,

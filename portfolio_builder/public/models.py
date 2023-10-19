@@ -105,10 +105,18 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_securities(filters: List[BinaryExpression] = [db.literal(1) == db.literal(1)],
-    entities: List[Any] = [Security],
+def get_securities(
+    filters: List[BinaryExpression],
+    entities: List[Any] = [
+        Security.name,
+        Security.ticker,
+        Security.exchange,
+        Security.currency,
+        Security.country,
+        Security.isin,
+    ],
     orderby: List[Any] = [Security.ticker]
-) -> List[Security]:
+) -> List[Row[Tuple[Any, Any]]]:
     prices = (
         db
         .session
