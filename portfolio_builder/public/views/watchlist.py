@@ -41,7 +41,7 @@ def index() -> str:
     watch_names = [
         item.name
         for item in get_watchlists(
-            filter=[Watchlist.user_id==current_user.id], # type: ignore 
+            filters=[Watchlist.user_id==current_user.id], # type: ignore 
         )
     ]
     select_form = SelectWatchlistForm()
@@ -55,7 +55,7 @@ def index() -> str:
         curr_watch_name = select_form.watchlist.data # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
-    watch_items = get_watch_items(filter=[
+    watch_items = get_watch_items(filters=[
         Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
@@ -109,7 +109,7 @@ def delete_watchlist() -> Response:
         return redirect(url_for('watchlist.index'))
     else:
         watch_name = request.form.get('watchlist_group_removed')
-        watchlist = get_watchlist(filter=[Watchlist.name==watch_name])
+        watchlist = get_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -135,7 +135,7 @@ def add(watch_name: str) -> Response:
     if add_item_form.errors:
         flash_errors(add_item_form)
     elif add_item_form.validate_on_submit():
-        watchlist = get_watchlist(filter=[Watchlist.name==watch_name])
+        watchlist = get_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -177,7 +177,7 @@ def update(watch_name: str, ticker: str) -> Response:
     if add_item_form.errors:
         flash_errors(add_item_form)
     elif add_item_form.validate_on_submit():
-        last_item = get_watch_item(filter=[
+        last_item = get_watch_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
@@ -218,12 +218,12 @@ def delete(watch_name: str, ticker: str) -> Response:
     ids = [
         item.id
         for item in get_watch_items(
-            filter=[
+            filters=[
                 Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name == watch_name,
                 WatchlistItem.ticker == ticker,
             ],
-            select=[WatchlistItem.id]
+            entities=[WatchlistItem.id]
         )
     ]
     if not ids:

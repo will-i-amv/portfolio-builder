@@ -47,23 +47,23 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
     tickers = set([
         item.ticker 
         for item in get_watch_items(
-            filter=[
+            filters=[
                 Watchlist.user_id==1, # type: ignore
                 Watchlist.name == 'Technology'
             ],
-            select=[WatchlistItem.ticker],
+            entities=[WatchlistItem.ticker],
             orderby=[WatchlistItem.ticker]
         )
     ])
     portf_pos = {}
     for ticker in tickers:
         trade_history = get_watch_items(
-            filter=[
+            filters=[
                 Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name == watchlist_name,
                 WatchlistItem.ticker == ticker,
             ],
-            select=[
+            entities=[
                 WatchlistItem.ticker,
                 WatchlistItem.quantity,
                 WatchlistItem.price,
@@ -92,7 +92,7 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
 def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     df_portf_val = pd.DataFrame()
     for ticker, df_positions in portf_pos.items():
-        prices = get_prices(filter=[Security.ticker == ticker])
+        prices = get_prices(filters=[Security.ticker == ticker])
         df_prices = (
             pd
             .DataFrame(
@@ -288,7 +288,7 @@ def index() -> str:
     watch_names = [
         item.name
         for item in get_watchlists(
-            filter=[Watchlist.user_id==current_user.id], # type: ignore 
+            filters=[Watchlist.user_id==current_user.id], # type: ignore 
         )
     ]
     if request.method == 'POST':
@@ -297,7 +297,7 @@ def index() -> str:
         curr_watch_name = next(iter(watch_names), '')
     portf_pos = get_portf_positions(curr_watch_name)
     df_portf_val = get_portf_valuations(portf_pos)
-    portf_flows = get_grouped_watch_items(filter=[Watchlist.name == curr_watch_name])
+    portf_flows = get_grouped_watch_items(filters=[Watchlist.name == curr_watch_name])
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     return render_template(
         'public/dashboard.html',

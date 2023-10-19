@@ -105,26 +105,24 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_securities(
-    filter: List[BinaryExpression] = [db.literal(1) == db.literal(1)],
-    select: List[Any] = [Security],
+def get_securities(filters: List[BinaryExpression] = [db.literal(1) == db.literal(1)],
+    entities: List[Any] = [Security],
     orderby: List[Any] = [Security.ticker]
 ) -> List[Security]:
     prices = (
         db
         .session
         .query(Security)
-        .filter(*filter)
-        .with_entities(*select)
+        .filter(*filters)
+        .with_entities(*entities)
         .order_by(*orderby)
         .all()
     )
     return prices
 
 
-def get_prices(
-    filter: List[BinaryExpression],
-    select: List[Any] = [Price.date, Price.close_price],
+def get_prices(filters: List[BinaryExpression],
+    entities: List[Any] = [Price.date, Price.close_price],
     orderby: List[Any] = [Price.date] 
 ) -> List[Row[Tuple[Any, Any]]]:
     prices = (
@@ -132,33 +130,33 @@ def get_prices(
         .session
         .query(Price)
         .join(Security, onclause=(Price.ticker_id==Security.id))
-        .filter(*filter)
-        .with_entities(*select)
+        .filter(*filters)
+        .with_entities(*entities)
         .order_by(*orderby)
         .all()
     )
     return prices
 
 
-def query_watch_item(filter: List[BinaryExpression]) -> Query[WatchlistItem]:
+def query_watch_item(filters: List[BinaryExpression]) -> Query[WatchlistItem]:
     query = (
         db
         .session
         .query(WatchlistItem)
         .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(*filter)
+        .filter(*filters)
     )
     return query
 
 
-def get_watch_item(filter: List[BinaryExpression]) -> Optional[WatchlistItem]:
-    item = query_watch_item(filter).first()
+def get_watch_item(filters: List[BinaryExpression]) -> Optional[WatchlistItem]:
+    item = query_watch_item(filters).first()
     return item
 
 
 def get_watch_items(
-    filter: List[BinaryExpression],
-    select: List[Any] = [
+    filters: List[BinaryExpression],
+    entities: List[Any] = [
         WatchlistItem.id,
         WatchlistItem.ticker,
         WatchlistItem.quantity,
@@ -169,20 +167,19 @@ def get_watch_items(
     ],
     orderby: List[Any] = [WatchlistItem.id]
 ) -> List[Row[Tuple[Any, Any]]]:
-    query = query_watch_item(filter)
+    query = query_watch_item(filters)
     items = (
         query
-        .with_entities(*select)
+        .with_entities(*entities)
         .order_by(*orderby)
         .all()
     )
     return items
 
 
-def get_grouped_watch_items(
-    filter: List[BinaryExpression]
+def get_grouped_watch_items(filters: List[BinaryExpression]
 ) -> List[Row[Tuple[Any, Any]]]:
-    query = query_watch_item(filter)
+    query = query_watch_item(filters)
     grouped_items = (
         query
         .group_by(func.date(WatchlistItem.trade_date))
@@ -202,29 +199,29 @@ def get_grouped_watch_items(
     return grouped_items
 
 
-def query_watchlist(filter: List[BinaryExpression]) -> Query[Watchlist]:
+def query_watchlist(filters: List[BinaryExpression]) -> Query[Watchlist]:
     query = (
         db
         .session
         .query(Watchlist)
-        .filter(*filter)
+        .filter(*filters)
     )
     return query
 
-def get_watchlist(filter: List[BinaryExpression]) -> Optional[Watchlist]:
-    item = query_watchlist(filter).first()
+def get_watchlist(filters: List[BinaryExpression]) -> Optional[Watchlist]:
+    item = query_watchlist(filters).first()
     return item
 
 
 def get_watchlists(
-    filter: List[BinaryExpression],
-    select: List[Any] = [Watchlist.name],
+    filters: List[BinaryExpression],
+    entities: List[Any] = [Watchlist.name],
     orderby: List[Any] = [Watchlist.id]
 ) -> List[Row[Tuple[Any, Any]]]:
-    query = query_watchlist(filter)
+    query = query_watchlist(filters)
     items = (
         query
-        .with_entities(*select)
+        .with_entities(*entities)
         .order_by(*orderby)
         .all()
     )

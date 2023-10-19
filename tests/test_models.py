@@ -217,8 +217,8 @@ class TestWatchlist:
         db.session.add_all(watchlists)
         db.session.commit()
         stored_watchlists = get_watchlists(
-            filter=[Watchlist.user_id == user_id],
-            select=[Watchlist.name, Watchlist.user_id]
+            filters=[Watchlist.user_id == user_id],
+            entities=[Watchlist.name, Watchlist.user_id]
         )
         assert len(watchlists) == 2
         for stored_watch, watch in zip(stored_watchlists, watchlists):
@@ -337,12 +337,12 @@ class TestGetWatchlists:
 
     def test_matching_filter(self, watchlists):
         watchlist = random.choice(watchlists)
-        result = get_watchlists(filter=[Watchlist.name == watchlist.name])
+        result = get_watchlists(filters=[Watchlist.name == watchlist.name])
         assert isinstance(result, list)
         assert len(result) > 0
     
     def test_not_matching_filter(self, db):
-        result = get_watchlists(filter=[Watchlist.name == 'Nonexistent Watchlist'])
+        result = get_watchlists(filters=[Watchlist.name == 'Nonexistent Watchlist'])
         assert isinstance(result, list)
         assert len(result) == 0
 
@@ -355,12 +355,12 @@ class TestGetWatchlists:
         assert len(result) == 0
 
     def test_default_columns_param(self):
-        result = get_watchlists(filter=[])
+        result = get_watchlists(filters=[])
         assert all(isinstance(item, Row) for item in result)
         assert all(isinstance(item.name, str) for item in result)
 
     def test_valid_columns_param(self):
-        result = get_watchlists(filter=[], select=[Watchlist.id, Watchlist.user_id])
+        result = get_watchlists(filters=[], entities=[Watchlist.id, Watchlist.user_id])
         assert all(isinstance(item, Row) for item in result)
         assert all(isinstance(item.id, int) for item in result)
         assert all(isinstance(item.user_id, int) for item in result)
@@ -368,7 +368,7 @@ class TestGetWatchlists:
     def test_default_orderby_param(self):
         result = [
             item.id
-            for item in get_watchlists(filter=[], select=[Watchlist.id])
+            for item in get_watchlists(filters=[], entities=[Watchlist.id])
         ]
         assert all(
             result[i] <= result[i+1] 
@@ -378,7 +378,7 @@ class TestGetWatchlists:
     def test_orderby_asc(self):
         result = [
             item.name
-            for item in get_watchlists(filter=[], orderby=[Watchlist.name])
+            for item in get_watchlists(filters=[], orderby=[Watchlist.name])
         ]
         assert all(
             result[i] <= result[i+1] 
@@ -388,7 +388,7 @@ class TestGetWatchlists:
     def test_orderby_desc(self):
         result = [
             item.name
-            for item in get_watchlists(filter=[], orderby=[Watchlist.name.desc()])
+            for item in get_watchlists(filters=[], orderby=[Watchlist.name.desc()])
         ]
         assert all(
             result[i] >= result[i+1] 
@@ -397,16 +397,16 @@ class TestGetWatchlists:
 
     def test_raises_error_invalid_filter_param(self):
         with pytest.raises(AttributeError):
-            get_watchlists(filter=[Watchlist.invalid_column == 0])
+            get_watchlists(filters=[Watchlist.invalid_column == 0])
 
     def test_raises_error_invalid_select_param(self):
         with pytest.raises(AttributeError):
-            get_watchlists(filter=[], select=[Watchlist.invalid_column])
+            get_watchlists(filters=[], entities=[Watchlist.invalid_column])
 
     # Raises an error when given an invalid orderby parameter
     def test_raises_error_invalid_orderby_param(self):
         with pytest.raises(Exception):
-            get_watchlists(filter=[], orderby=[Watchlist.invalid_column])
+            get_watchlists(filters=[], orderby=[Watchlist.invalid_column])
 
 
 class TestGetWatchItems:
@@ -415,7 +415,7 @@ class TestGetWatchItems:
         # Returns a list of rows containing the selected columns 
         # from WatchlistItem table, ordered by the given orderby parameter.
         watch_item = random.choice(watch_items)
-        result = get_watch_items(filter=[WatchlistItem.ticker == watch_item.ticker])
+        result = get_watch_items(filters=[WatchlistItem.ticker == watch_item.ticker])
         assert len(result) > 0
         assert isinstance(result, list)
         assert all(isinstance(item, Row) for item in result)
@@ -428,12 +428,12 @@ class TestGetWatchItems:
         assert all(item.ticker == watch_item.ticker for item in result)
 
     def test_returns_match_all_filter(self, watch_items, db_teardown):
-        result = get_watch_items(filter=[])
+        result = get_watch_items(filters=[])
         assert len(result) == len(watch_items)
     
     def test_returns_no_match_filter(self, db):
         # Returns an empty list if no rows match the given filter.
-        result = get_watch_items(filter=[
+        result = get_watch_items(filters=[
             WatchlistItem.ticker == 'Nonexistent Ticker'
         ])
         assert isinstance(result, list)
@@ -444,14 +444,14 @@ class TestGetWatchItems:
         watch_item = random.choice(watch_items)
         filters = [WatchlistItem.ticker == watch_item.ticker]
         select = [WatchlistItem.id, WatchlistItem.ticker]
-        result = get_watch_items(filter=filters, select=select)
+        result = get_watch_items(filters=filters, entities=select)
         assert all((len(row) == len(select)) for row in result)
         assert all(isinstance(row.id, int) for row in result)
         assert all(isinstance(row.ticker, str) for row in result)
 
     def test_returns_rows_ascending_order(self, db):
         # Returns rows in ascending order by default.
-        result = get_watch_items(filter=[WatchlistItem.ticker == 'AAPL'])
+        result = get_watch_items(filters=[WatchlistItem.ticker == 'AAPL'])
         assert all(
             result[i].id <= result[i+1].id 
             for i in range(len(result)-1)
@@ -462,7 +462,7 @@ class TestGetWatchItems:
         # is given with a descending order.
         filter = [WatchlistItem.ticker == 'AAPL']
         orderby = [WatchlistItem.id.desc()]
-        result = get_watch_items(filter=filter, orderby=orderby)
+        result = get_watch_items(filters=filter, orderby=orderby)
         assert all(
             result[i].id >= result[i+1].id 
             for i in range(len(result)-1)
@@ -471,15 +471,15 @@ class TestGetWatchItems:
     def test_returns_empty_list_invalid_filter(self, db, db_rollback):
         # Raises an error if the filter parameter is invalid.
         with pytest.raises(AttributeError):
-            get_watch_items(filter=[WatchlistItem.invalid_column == 0])
+            get_watch_items(filters=[WatchlistItem.invalid_column == 0])
 
     def test_returns_empty_list_invalid_select(self, watch_items, db_rollback):
         # Raises an error if the select parameter is invalid.
         watch_item = random.choice(watch_items)
         with pytest.raises(AttributeError):
             get_watch_items(
-                filter=[WatchlistItem.ticker == watch_item.ticker], 
-                select=[WatchlistItem.invalid_column]
+                filters=[WatchlistItem.ticker == watch_item.ticker], 
+                entities=[WatchlistItem.invalid_column]
             )
 
     def test_returns_empty_list_invalid_orderby(self, watch_items, db_rollback):
@@ -487,7 +487,7 @@ class TestGetWatchItems:
         watch_item = random.choice(watch_items)
         with pytest.raises(AttributeError):
             get_watch_items(
-                filter=[WatchlistItem.ticker == watch_item.ticker], 
+                filters=[WatchlistItem.ticker == watch_item.ticker], 
                 orderby = [WatchlistItem.invalid_column],
             )
 
@@ -497,28 +497,28 @@ class TestGetWatchlist:
     def test_returns_first_valid_filter(self, watchlists, db_teardown):
         # Returns first Watchlist object when a valid filter is provided
         watchlist = random.choice(watchlists)
-        result = get_watchlist(filter=[Watchlist.name == watchlist.name])
+        result = get_watchlist(filters=[Watchlist.name == watchlist.name])
         assert isinstance(result, Watchlist)
 
     def test_returns_none_no_match(self, db_teardown):
         # Returns None when no Watchlist matches the filter
-        result = get_watchlist(filter=[Watchlist.name == "Nonexistent Watchlist"])
+        result = get_watchlist(filters=[Watchlist.name == "Nonexistent Watchlist"])
         assert result is None
 
     def test_returns_first_multiple_match(self, watchlists):
         # Returns first Watchlist object that matches the filter 
         # that multiple Watchlists match.
         watchlist = random.choice(watchlists)
-        result = get_watchlist(filter=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
+        result = get_watchlist(filters=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
         assert isinstance(result, Watchlist)
 
     def test_returns_first_all_filter(self, db_teardown):
         # Returns one Watchlist object when a 'match_all' filter is provided
-        result = get_watchlist(filter=[])
+        result = get_watchlist(filters=[])
         assert result is not None
         assert isinstance(result, Watchlist)
 
     def test_raise_error_invalid_filter(self, db_rollback):
         # Raises an error when an invalid filter is provided
         with pytest.raises(AttributeError):
-            get_watchlist(filter=[Watchlist.invalid_column == "Invalid"])
+            get_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
