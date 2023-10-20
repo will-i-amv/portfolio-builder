@@ -1,12 +1,11 @@
 import datetime as dt
 import logging
-import random
-import time
 from io import StringIO
 from typing import Dict, List
 
 import pandas as pd
 import requests
+from requests.exceptions import HTTPError, ConnectionError
 from flask import current_app
 from tiingo import TiingoClient
 
@@ -28,10 +27,18 @@ EXCHANGES = [
 
 def get_securities_eodhd(api_key: str) -> pd.DataFrame:
     df_list = []
-    for exchange in EXCHANGES:
-        url = f'https://eodhistoricaldata.com/api/exchange-symbol-list/{exchange}'
-        response = requests.get(url, params={'api_token': api_key})
-        df_list.append(pd.read_csv(StringIO(response.text)))
+    try:
+        for exchange in EXCHANGES:
+            url = f'https://eodhistoricaldata.com/api/exchange-symbol-list/{exchange}'
+            response = requests.get(url, params={'api_token': api_key})
+            response.raise_for_status()
+            df_list.append(pd.read_csv(StringIO(response.text)))
+    except ConnectionError as e:
+        logging.error(f"API connection failed: {e}")
+        raise
+    except HTTPError as e:
+        logging.error(f"API request failed: {e}")
+        raise
     df = pd.concat(df_list)
     df.columns = df.columns.str.lower()
     df_cleaned = (
@@ -118,7 +125,10 @@ def load_securities() -> None:
     app = current_app._get_current_object() # type: ignore
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     API_KEY_EODHD = app.config['API_KEY_EODHD']
-    df_eodhd = get_securities_eodhd(API_KEY_EODHD)
+    try:
+        df_eodhd = get_securities_eodhd(API_KEY_EODHD)
+    except:
+        return
     df_tiingo = get_securities_tiingo(API_KEY_TIINGO)
     df_cleaned = (
         pd
@@ -137,6 +147,7 @@ def load_securities() -> None:
         if_exists="append",
         index=False
     )
+    return
 
 
 def load_prices(
