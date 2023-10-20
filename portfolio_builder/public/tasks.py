@@ -29,11 +29,8 @@ EXCHANGES = [
 def get_securities_eodhd(api_key: str) -> pd.DataFrame:
     df_list = []
     for exchange in EXCHANGES:
-        url = (
-            f'https://eodhistoricaldata.com/api/exchange-symbol-list/' +
-            f'{exchange}?api_token={api_key}'
-        )
-        response = requests.get(url)
+        url = f'https://eodhistoricaldata.com/api/exchange-symbol-list/{exchange}'
+        response = requests.get(url, params={'api_token': api_key})
         df_list.append(pd.read_csv(StringIO(response.text)))
     df = pd.concat(df_list)
     df.columns = df.columns.str.lower()
