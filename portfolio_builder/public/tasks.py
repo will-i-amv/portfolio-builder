@@ -1,4 +1,5 @@
 import datetime as dt
+import logging
 import random
 import time
 from io import StringIO
@@ -15,6 +16,8 @@ from portfolio_builder.public.models import (
 )
 
 
+COUNTRIES = ['USA', 'GBR', 'JP', 'DEU', 'FRA'] # ISO 3166-1 alpha-3
+CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY']
 EXCHANGES = [
     # US
     'NYSE',
