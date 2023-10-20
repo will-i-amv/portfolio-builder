@@ -25,16 +25,17 @@ EXCHANGES = [
 
 
 def get_securities_eodhd(api_key: str) -> pd.DataFrame:
-    df = pd.DataFrame()
+    df_list = []
     for exchange in EXCHANGES:
         url = (
             f'https://eodhistoricaldata.com/api/exchange-symbol-list/' +
             f'{exchange}?api_token={api_key}'
         )
         response = requests.get(url)
-        df = pd.concat([df, pd.read_csv(StringIO(response.text))])
+        df_list.append(pd.read_csv(StringIO(response.text)))
         time.sleep(1.0 + round(random.random(), 2))
-    df.columns = [col.lower() for col in df.columns]
+    df = pd.concat(df_list)
+    df.columns = df.columns.str.lower()
     df_cleaned = (
         df
         .loc[lambda x: x['code'].notna()]
