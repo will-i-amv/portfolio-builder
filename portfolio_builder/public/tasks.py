@@ -16,13 +16,12 @@ from portfolio_builder.public.models import (
 )
 
 
+ASSET_TYPES = ['Stock']
 COUNTRIES = ['USA', 'GBR', 'JP', 'DEU', 'FRA'] # ISO 3166-1 alpha-3
 CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY']
 EXCHANGES = [
     # US
     'NYSE',
-    'NYSE ARCA',
-    'NYSE MKT',
     'NASDAQ',
 ]
 
@@ -36,7 +35,6 @@ def get_securities_eodhd(api_key: str) -> pd.DataFrame:
         )
         response = requests.get(url)
         df_list.append(pd.read_csv(StringIO(response.text)))
-        time.sleep(1.0 + round(random.random(), 2))
     df = pd.concat(df_list)
     df.columns = df.columns.str.lower()
     df_cleaned = (
@@ -53,6 +51,7 @@ def get_securities_eodhd(api_key: str) -> pd.DataFrame:
         }}, regex=True)
         .fillna({'isin': ''})
         .loc[lambda x: x['asset_type'] == 'Stock']
+        .drop_duplicates(subset=['ticker'])
     )
     return df_cleaned
 
