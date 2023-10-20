@@ -50,6 +50,7 @@ class TestGetSecuritiesEodhd:
             api_key = app.config['API_KEY_EODHD']
             df = get_securities_eodhd(api_key)
             # The dataframe has unique tickers
+            assert df['name'].apply(lambda x: isinstance(x, str) and x != '').all()
             assert df['ticker'].nunique() == len(df) 
             assert df['exchange'].isin(EXCHANGES).all()
             assert df['country'].isin(COUNTRIES).all()
