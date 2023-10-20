@@ -140,3 +140,6 @@ configuration.cfg
 *.png
 *.dot
 *.db
+
+# pytest-recording cassettes
+/tests/cassettes
