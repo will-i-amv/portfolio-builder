@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_object_dtype
 import pytest
 
 from portfolio_builder.public.tasks import (
-    EXCHANGES, CURRENCIES, COUNTRIES, get_securities_eodhd
+    EXCHANGES, CURRENCIES, COUNTRIES, ASSET_TYPES, 
+    get_securities_eodhd
 )
 
 
@@ -42,14 +42,19 @@ class TestGetSecuritiesEodhd:
             df = get_securities_eodhd(api_key)
             assert df.isnull().sum().sum() == 0
 
-    # Returns a DataFrame where all country codes are valid
     @pytest.mark.vcr
     def test_returns_dataframe_valid_col_values(self, app):
-        # Returns a pandas DataFrame where all the values in the 'country' column 
-        # are valid country codes
+        # Returns a pandas DataFrame where all the column values 
+        # are valid ones
         with app.app_context():
             api_key = app.config['API_KEY_EODHD']
             df = get_securities_eodhd(api_key)
+            # The dataframe has unique tickers
+            assert df['ticker'].nunique() == len(df) 
             assert df['exchange'].isin(EXCHANGES).all()
             assert df['country'].isin(COUNTRIES).all()
             assert df['currency'].isin(CURRENCIES).all()
+            assert df['asset_type'].isin(ASSET_TYPES).all()
+            # The 'isin' column is a string of length 12 
+            # if the ticker has an ISIN, or 0 if it doesn't
+            assert df['isin'].str.len().isin([12, 0]).all()
