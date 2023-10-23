@@ -9,7 +9,6 @@ A financial web application written in Flask that allows the creation of dummy p
 # Table of Contents
 
 - [Overview](#Overview)
-- [How it Works](#Installation)
 - [Features](#Features)
 - [Credits](#Credits)
 - [Disclaimer](#Disclaimer)
@@ -19,8 +18,7 @@ A financial web application written in Flask that allows the creation of dummy p
 
 The web app allows users to create an unlimited number of dummy portfolios to test their strategies, monitor potential performance, or just track certain sectors they are interested in. For now only stocks from US exchanges (NYSE and NASDAQ) are available.
 
-# How it Works
-
+How it works:
 * After registering and logging in, the user can create any number of portfolios.
 * Then the user can start adding initial positions for each security to a portfolio, specifying the details of each position. 
 * The user can update a position by adding buy and sell operations.
