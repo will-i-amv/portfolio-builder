@@ -41,10 +41,10 @@ The following features are implemented:
 
 A big thank you to the FLask, SQLAlchemy and Pandas communities for giving us such high quality libraries on which this project is built.
 
-# Disclaimer: 
+# Disclaimer
 
 This software is for educational purposes only. USE THE SOFTWARE AT YOUR OWN RISK. I ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS. Do not risk money that you can't afford to lose. There might be bugs in the code - this software DOES NOT come with ANY warranty.
 
-# Licence: 
+# Licence
 
 MIT Licence.
