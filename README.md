@@ -8,12 +8,12 @@ A financial web application written in Flask that allows the creation of dummy p
 
 # Table of Contents
 
-- [Overview](https://github.com/will-i-amv/portfolio-builder-flask#Overview)
-- [How it Works](https://github.com/will-i-amv/portfolio-builder-flask#Installation)
-- [Features](https://github.com/will-i-amv/portfolio-builder-flask#Features)
-- [Credits](https://github.com/will-i-amv/portfolio-builder-flask#Credits)
-- [Disclaimer](https://github.com/will-i-amv/portfolio-builder-flask#Disclaimer)
-- [License](https://github.com/will-i-amv/portfolio-builder-flask#License)
+- [Overview](#Overview)
+- [How it Works](#Installation)
+- [Features](#Features)
+- [Credits](#Credits)
+- [Disclaimer](#Disclaimer)
+- [License](#License)
 
 # Overview
 
