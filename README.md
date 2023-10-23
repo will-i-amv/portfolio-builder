@@ -23,8 +23,8 @@ How it works:
 * Then the user can start adding initial positions for each security to a portfolio, specifying the details of each position. 
 * The user can update a position by adding buy and sell operations.
 * The site will display a dashboard with various metrics based on the information entered by the user. 
-* If there's a new security that doesn't have prices stored in the database, an API call will be made to get daily prices for the last 100 days. 
-* Daily prices for all existing securities are updated at 1am every day.
+* If there's a new security that doesn't have prices stored in the database, an API call will be made to get its daily prices for the last 100 days. 
+* Daily prices for all securities stored in the DB are updated at 1am every day.
 
 # Features
 
@@ -43,6 +43,6 @@ A big thank you to the FLask, SQLAlchemy and Pandas communities for giving us su
 
 This software is for educational purposes only. USE THE SOFTWARE AT YOUR OWN RISK. I ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS. Do not risk money that you can't afford to lose. There might be bugs in the code - this software DOES NOT come with ANY warranty.
 
-# Licence
+# License
 
 MIT Licence.
