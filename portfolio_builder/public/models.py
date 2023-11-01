@@ -107,16 +107,20 @@ class WatchlistItem(db.Model):
 
 def get_securities(
     filters: List[BinaryExpression],
-    entities: List[Any] = [
-        Security.name,
-        Security.ticker,
-        Security.exchange,
-        Security.currency,
-        Security.country,
-        Security.isin,
-    ],
-    orderby: List[Any] = [Security.ticker]
+    entities: Optional[List[Any]] = None,
+    orderby: Optional[List[Any]] = None,
 ) -> List[Row[Tuple[Any, Any]]]:
+    if not entities:
+        entities = [
+            Security.name,
+            Security.ticker,
+            Security.exchange,
+            Security.currency,
+            Security.country,
+            Security.isin,
+        ]
+    if not orderby:
+        orderby = [Security.ticker]
     prices = (
         db
         .session
@@ -129,10 +133,15 @@ def get_securities(
     return prices
 
 
-def get_prices(filters: List[BinaryExpression],
-    entities: List[Any] = [Price.date, Price.close_price],
-    orderby: List[Any] = [Price.date] 
+def get_prices(
+    filters: List[BinaryExpression],
+    entities: Optional[List[Any]] = None,
+    orderby: Optional[List[Any]] = None,
 ) -> List[Row[Tuple[Any, Any]]]:
+    if not entities:
+        entities = [Price.date, Price.close_price]
+    if not orderby:
+        orderby = [Price.date] 
     prices = (
         db
         .session
@@ -166,17 +175,21 @@ def get_first_watch_item(
 
 def get_watch_items(
     filters: List[BinaryExpression],
-    entities: List[Any] = [
-        WatchlistItem.id,
-        WatchlistItem.ticker,
-        WatchlistItem.quantity,
-        WatchlistItem.price,
-        WatchlistItem.side,
-        WatchlistItem.trade_date,
-        WatchlistItem.comments,
-    ],
-    orderby: List[Any] = [WatchlistItem.id]
+    entities: Optional[List[Any]] = None,
+    orderby: Optional[List[Any]] = None,
 ) -> List[Row[Tuple[Any, Any]]]:
+    if not entities: 
+        entities = [
+            WatchlistItem.id,
+            WatchlistItem.ticker,
+            WatchlistItem.quantity,
+            WatchlistItem.price,
+            WatchlistItem.side,
+            WatchlistItem.trade_date,
+            WatchlistItem.comments,
+        ]
+    if not orderby: 
+        orderby = [WatchlistItem.id]
     query = query_watch_item(filters)
     items = (
         query
@@ -187,7 +200,8 @@ def get_watch_items(
     return items
 
 
-def get_grouped_watch_items(filters: List[BinaryExpression]
+def get_grouped_watch_items(
+    filters: List[BinaryExpression]
 ) -> List[Row[Tuple[Any, Any]]]:
     query = query_watch_item(filters)
     grouped_items = (
@@ -225,9 +239,13 @@ def get_first_watchlist(filters: List[BinaryExpression]) -> Optional[Watchlist]:
 
 def get_watchlists(
     filters: List[BinaryExpression],
-    entities: List[Any] = [Watchlist.name],
-    orderby: List[Any] = [Watchlist.id]
+    entities: Optional[List[Any]] = None,
+    orderby: Optional[List[Any]] = None,
 ) -> List[Row[Tuple[Any, Any]]]:
+    if not entities: 
+        entities = [Watchlist.name]
+    if not orderby: 
+        orderby = [Watchlist.id]
     query = query_watchlist(filters)
     items = (
         query
