@@ -17,7 +17,7 @@ from portfolio_builder.public.models import (
 
 ASSET_TYPES = ['Stock']
 COUNTRIES = ['USA', 'GBR', 'JP', 'DEU', 'FRA'] # ISO 3166-1 alpha-3
-CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY']
+CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'JPY']
 EXCHANGES = [
     # US
     'NYSE',
