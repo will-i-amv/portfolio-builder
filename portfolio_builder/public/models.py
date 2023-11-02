@@ -9,14 +9,15 @@ from sqlalchemy.sql.elements import BinaryExpression
 from portfolio_builder import db
 
 
-def get_default_date() -> dt.date:
-    trade_date = dt.date.today()
-    weekday = dt.date.isoweekday(trade_date)
+def get_default_date(date_: Optional[dt.date] = None) -> dt.date:
+    if date_ is None:
+        date_ = dt.date.today()
+    weekday = dt.date.isoweekday(date_)
     if weekday == 6: # Saturday
-        trade_date = trade_date - dt.timedelta(days=1)
+        date_ = date_ - dt.timedelta(days=1)
     elif weekday == 7: # Sunday
-        trade_date = trade_date - dt.timedelta(days=2)
-    return trade_date
+        date_ = date_ - dt.timedelta(days=2)
+    return date_
 
 
 class Security(db.Model):
