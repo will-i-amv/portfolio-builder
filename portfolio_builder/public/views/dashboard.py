@@ -2,13 +2,12 @@ from typing import Any, Dict, List
 
 import pandas as pd
 from flask import Blueprint, request, render_template
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
-    Watchlist, WatchlistItem, 
-    get_prices, get_watch_tickers, get_watch_trade_history, 
-    get_watch_flows, get_all_watch_names
+    Watchlist, WatchlistItem, Security,
+    get_prices, get_watchlists, get_watch_items, get_grouped_watch_items
 )
 from portfolio_builder.public.portfolio import FifoAccounting
 
@@ -45,15 +44,33 @@ def calc_portf_val_daily(
 
 
 def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
-    tickers = get_watch_tickers(filter=[
-        Watchlist.name == watchlist_name
+    tickers = set([
+        item.ticker 
+        for item in get_watch_items(
+            filters=[
+                Watchlist.user_id==1, # type: ignore
+                Watchlist.name == 'Technology'
+            ],
+            entities=[WatchlistItem.ticker],
+            orderby=[WatchlistItem.ticker]
+        )
     ])
     portf_pos = {}
     for ticker in tickers:
-        trade_history = get_watch_trade_history(filter=[
-            Watchlist.name == watchlist_name,
-            WatchlistItem.ticker == ticker,
-        ])
+        trade_history = get_watch_items(
+            filters=[
+                Watchlist.user_id==current_user.id, # type: ignore
+                Watchlist.name == watchlist_name,
+                WatchlistItem.ticker == ticker,
+            ],
+            entities=[
+                WatchlistItem.ticker,
+                WatchlistItem.quantity,
+                WatchlistItem.price,
+                WatchlistItem.trade_date.label("date")
+            ],
+            orderby=[WatchlistItem.trade_date]
+        )
         fifo_accounting = FifoAccounting(trade_history)
         fifo_accounting.calc_fifo()
         df_positions = (
@@ -75,7 +92,7 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
 def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     df_portf_val = pd.DataFrame()
     for ticker, df_positions in portf_pos.items():
-        prices = get_prices(ticker)
+        prices = get_prices(filters=[Security.ticker == ticker])
         df_prices = (
             pd
             .DataFrame(
@@ -268,14 +285,19 @@ def get_last_portf_position(portf_pos: Dict[str, pd.DataFrame]) -> List[tuple[An
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index() -> str:
-    watch_names = get_all_watch_names()
+    watch_names = [
+        item.name
+        for item in get_watchlists(
+            filters=[Watchlist.user_id==current_user.id], # type: ignore 
+        )
+    ]
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
         curr_watch_name = next(iter(watch_names), '')
     portf_pos = get_portf_positions(curr_watch_name)
     df_portf_val = get_portf_valuations(portf_pos)
-    portf_flows = get_watch_flows(filter=[Watchlist.name == curr_watch_name])
+    portf_flows = get_grouped_watch_items(filters=[Watchlist.name == curr_watch_name])
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     return render_template(
         'public/dashboard.html',
