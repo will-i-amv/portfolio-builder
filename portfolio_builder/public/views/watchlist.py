@@ -83,9 +83,7 @@ def add_watchlist() -> Response:
         Response: A redirect response to the 'watchlist.index' endpoint.
     """
     watchlist_form = AddWatchlistForm()
-    if watchlist_form.errors:
-        flash_errors(watchlist_form)
-    elif watchlist_form.validate_on_submit():
+    if watchlist_form.validate_on_submit():
         watchlist_name = watchlist_form.name.data 
         new_watchlist = Watchlist(
             user_id=current_user.id, # type: ignore
@@ -94,6 +92,8 @@ def add_watchlist() -> Response:
         db.session.add(new_watchlist)
         db.session.commit()
         flash(f"The watchlist '{watchlist_name}' has been added.")
+    elif watchlist_form.errors:
+        flash_errors(watchlist_form)
     return redirect(url_for('watchlist.index'))
 
 
@@ -132,9 +132,7 @@ def add(watch_name: str) -> Response:
         Response: A redirect response to the `watchlist.index` endpoint.
     """
     add_item_form = AddItemForm()
-    if add_item_form.errors:
-        flash_errors(add_item_form)
-    elif add_item_form.validate_on_submit():
+    if add_item_form.validate_on_submit():
         watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
@@ -156,6 +154,8 @@ def add(watch_name: str) -> Response:
                 func=load_prices_ticker,
                 args=[item.ticker],
             ) # task executes only once, immediately.
+    elif add_item_form.errors:
+        flash_errors(add_item_form)
     return redirect(url_for("watchlist.index"))
 
 
@@ -174,9 +174,7 @@ def update(watch_name: str, ticker: str) -> Response:
         Response: Redirects the user to the watchlist index page.
     """
     add_item_form = AddItemForm()
-    if add_item_form.errors:
-        flash_errors(add_item_form)
-    elif add_item_form.validate_on_submit():
+    if add_item_form.validate_on_submit():
         last_item = get_first_watch_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
@@ -199,6 +197,8 @@ def update(watch_name: str, ticker: str) -> Response:
             db.session.add_all([last_item, new_item])
             db.session.commit()
             flash(f"The ticker '{new_item.ticker}' has been updated.")
+    elif add_item_form.errors:
+        flash_errors(add_item_form)
     return redirect(url_for("watchlist.index"))
 
 
