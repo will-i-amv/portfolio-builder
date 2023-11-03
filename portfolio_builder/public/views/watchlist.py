@@ -12,7 +12,8 @@ from portfolio_builder.public.forms import (
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
-    get_securities, get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
+    get_securities, get_first_watchlist, get_watchlists, 
+    get_first_watch_item, get_watch_items
 )
 from portfolio_builder.public.tasks import load_prices_ticker
 
@@ -85,9 +86,9 @@ def add_watchlist() -> Response:
     Returns:
         Response: A redirect response to the 'watchlist.index' endpoint.
     """
-    watchlist_form = AddWatchlistForm()
-    if watchlist_form.validate_on_submit():
-        watchlist_name = watchlist_form.name.data 
+    form = AddWatchlistForm()
+    if form.validate_on_submit():
+        watchlist_name = form.name.data 
         new_watchlist = Watchlist(
             user_id=current_user.id, # type: ignore
             name=watchlist_name, 
@@ -95,8 +96,8 @@ def add_watchlist() -> Response:
         db.session.add(new_watchlist)
         db.session.commit()
         flash(f"The watchlist '{watchlist_name}' has been added.")
-    elif watchlist_form.errors:
-        flash_errors(watchlist_form)
+    elif form.errors:
+        flash_errors(form)
     return redirect(url_for('watchlist.index'))
 
 
