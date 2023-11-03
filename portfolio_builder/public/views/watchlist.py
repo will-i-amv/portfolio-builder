@@ -7,7 +7,8 @@ from flask_wtf import FlaskForm
 
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.forms import (
-    AddWatchlistForm, SelectWatchlistForm, AddItemForm
+    AddWatchlistForm, SelectWatchlistForm, 
+    AddItemForm, UpdateItemForm
 )
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem,
@@ -55,6 +56,7 @@ def index() -> str:
     else:
         curr_watch_name = next(iter(watch_names), '')
     add_item_form = AddItemForm()
+    upd_item_form = UpdateItemForm()
     watch_items = get_watch_items(filters=[
         Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == curr_watch_name,
@@ -66,6 +68,7 @@ def index() -> str:
         select_watch_form=select_watch_form,
         add_watch_form=add_watch_form,
         add_item_form=add_item_form,
+        upd_item_form=upd_item_form,
         curr_watch_name=curr_watch_name,
         securities=securities,
         watch_names=watch_names,
@@ -173,7 +176,7 @@ def update(watch_name: str, ticker: str) -> Response:
     Returns:
         Response: Redirects the user to the watchlist index page.
     """
-    form = AddItemForm()
+    form = UpdateItemForm()
     if form.validate_on_submit():
         last_item = get_first_watch_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore

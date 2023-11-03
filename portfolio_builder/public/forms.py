@@ -3,7 +3,6 @@ import datetime as dt
 from flask_login import current_user
 from flask_wtf import FlaskForm
 from sqlalchemy.sql import func, case
-from wtforms import validators as v
 from wtforms import (
     DateField, DecimalField, HiddenField, IntegerField, 
     StringField, SubmitField, SelectField, TextAreaField
@@ -60,101 +59,106 @@ class SelectWatchlistForm(FlaskForm):
             raise ValidationError(f"The watchlist '{input_name}' doesn't exist.")
 
 
-class AddItemForm(FlaskForm):
-    watch_name = HiddenField("")
+def validate_date(form: FlaskForm, field: DateField) -> None:
+    input_trade_date = field.data
+    try:
+        day_of_week = dt.date.isoweekday(input_trade_date)
+    except TypeError:
+        raise ValidationError("The trade date format is invalid.")
+    curr_date = get_default_date()
+    if day_of_week == 6 or day_of_week == 7:
+        raise ValidationError(
+            "The trade date can't fall on weekends."
+        )
+    elif input_trade_date > curr_date:
+        raise ValidationError(
+            "The trade date can't be a date in the future."
+        )
+
+
+class ItemForm(FlaskForm):
+    watchlist = HiddenField("")
     ticker = StringField(
         "Ticker",
-        validators=[v.Length(min=2, max=20), v.InputRequired()]
+        validators=[
+            InputRequired(),
+            Length(min=1, max=20), 
+        ]
     )
     quantity = IntegerField(
         "Quantity",
         validators=[
-            v.InputRequired(),
-            v.NumberRange(min=-10000000, max=10000000)
+            InputRequired(),
+            NumberRange(min=1, max=100000)
         ]
     )
     price = DecimalField(
         "Price",
         validators=[
-            v.InputRequired(),
-            v.NumberRange(min=0, max=100000)
+            InputRequired(),
+            NumberRange(min=1, max=1000000)
         ]
     )
     side = SelectField(
-        "Transaction Type",
-        choices=['buy', 'sell'],
-        validators=[v.InputRequired()]
+        "Side",
+        choices=[('buy'), ('sell')],
+        validators=[InputRequired()]
     )
     trade_date = DateField(
         "Trade Date", 
-        validators=[v.InputRequired()],
+        validators=[InputRequired(), validate_date],
         default=get_default_date
     )
     comments = TextAreaField(
         "Comments",
-        validators=[v.Optional(), v.Length(max=140)]
+        validators=[Optional(), Length(max=140)]
     )
-    submit = SubmitField("Add to Watchlist")
 
     def validate_ticker(self, ticker: StringField) -> None:
         input_ticker = ticker.data
-        ticker_db = (
+        tickers = (
             db
             .session
             .query(Security)
             .filter(Security.ticker==input_ticker)
             .first()
         )
-        if not ticker_db:
-            raise v.ValidationError(
-                f'The ticker "{input_ticker}" is unavailable.'
+        if not tickers:
+            raise ValidationError(
+                f"The ticker '{input_ticker}' doesn't exist in the database."
             )
+    
+    def validate_side(self):
+        raise NotImplementedError
+    
+    def validate_trade_date(self):
+        raise NotImplementedError
 
-    def validate_trade_date(self, trade_date: DateField):
-        """
-        The trade date of a ticker can't be in the future, 
-        on weekends, or before the last trade, if it exists.
-        """
-        input_trade_date = trade_date.data
-        try:
-            day_of_week = dt.date.isoweekday(input_trade_date)
-        except TypeError:
-            raise v.ValidationError("The trade date format is invalid.")
-        curr_date = get_default_date()
-        if day_of_week == 6 or day_of_week == 7:
-            raise v.ValidationError(
-                "The trade date cannot fall on weekends."
-            )
-        elif input_trade_date > curr_date:
-            raise v.ValidationError(
-                "The trade date cannot be a date in the future."
-            )
-        potential_trade_date = (
-            get_first_watch_item(filters=[
-                Watchlist.name == self.watch_name.data,
-                WatchlistItem.ticker == self.ticker.data,
-                WatchlistItem.is_last_trade == True,
-            ])
-        )
-        if not potential_trade_date:
-            pass
-        else:
-            last_trade_date = potential_trade_date.trade_date
-            if input_trade_date < last_trade_date:
-                raise v.ValidationError(
-                    f"The last trade date for ticker '{self.ticker.data}' " + 
-                    f"is {last_trade_date}, the new date can't be before that."
-                )
+class AddItemForm(ItemForm):
+    submit = SubmitField("Add Item")
 
     def validate_side(self, side: SelectField) -> None:
         input_side = side.data
-        total_amount = self.price.data * self.quantity.data
         if input_side == 'sell':
-            net_assets = [ 
+            raise ValidationError(f"You can't sell if your portfolio is empty.")
+    
+    def validate_trade_date(self, trade_date: DateField) -> None:
+        pass
+
+
+class UpdateItemForm(ItemForm):
+    submit = SubmitField("Update Item")
+
+    def validate_side(self, side: SelectField) -> None:
+        input_side = side.data
+        input_ticker = self.ticker.data
+        total_amount_sold = self.price.data * self.quantity.data
+        if input_side == 'sell':
+            net_asset_values = [ 
                 item.flows
                 for item in get_watch_items(
                     filters=[
-                        Watchlist.name == self.watch_name.data,
+                        Watchlist.name == self.watchlist.data,
                         WatchlistItem.ticker == self.ticker.data,
                     ],
                     entities=[
@@ -168,11 +172,28 @@ class AddItemForm(FlaskForm):
                     ]
                 )
             ]
-            net_asset = next(iter(net_assets), 0.0)
-            if not net_asset:
-                raise v.ValidationError(f"You can't sell if your portfolio is empty.")
-            elif total_amount > net_asset: 
-                raise v.ValidationError(
-                    f"You tried to sell USD {total_amount} worth of '{self.ticker.data}'," + 
-                    f"but you only have USD {net_assets} in total." 
+            net_asset_value = next(iter(net_asset_values), 0.0)
+            if total_amount_sold > net_asset_value: 
+                raise ValidationError(
+                    f"You tried to sell USD {total_amount_sold} " + 
+                    f"worth of '{input_ticker}', but you only have " + 
+                    f"USD {net_asset_value} in total." 
+                )
+    
+    def validate_trade_date(self, trade_date: DateField) -> None:
+        input_trade_date = trade_date.data
+        input_ticker = self.ticker.data
+        potential_trade_date = (
+            get_first_watch_item(filters=[
+                Watchlist.name == self.watchlist.data,
+                WatchlistItem.ticker == self.ticker.data,
+                WatchlistItem.is_last_trade == True,
+            ])
+        )
+        if potential_trade_date:
+            last_trade_date = potential_trade_date.trade_date
+            if input_trade_date < last_trade_date:
+                raise ValidationError(
+                    f"The last trade date for ticker '{input_ticker}' " + 
+                    f"is '{last_trade_date}', the new date can't be before that."
                 )

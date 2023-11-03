@@ -57,7 +57,7 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('watchlist.add', watch_name = curr_watch_name) }}" method="post">
-                            <dl>{{ render_field(add_item_form.watch_name, value = curr_watch_name) }}
+                            <dl>{{ render_field(add_item_form.watchlist, value = curr_watch_name) }}
                                 {{ render_field(add_item_form.ticker) }}
                                 {{ render_field(add_item_form.quantity) }}
                                 {{ render_field(add_item_form.price) }}
@@ -181,14 +181,14 @@
                                         </div>
                                         <div class="modal-body">
                                             <form action="{{ url_for('watchlist.update', watch_name = curr_watch_name,  ticker = item.ticker) }}" method="post">
-                                                <dl>{{ render_field(add_item_form.watch_name, value = curr_watch_name) }}
-                                                    {{ render_field(add_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
-                                                    {{ render_field(add_item_form.quantity) }}
-                                                    {{ render_field(add_item_form.price) }}
-                                                    {{ render_field(add_item_form.side) }}
-                                                    {{ render_field(add_item_form.trade_date, value = item.trade_date.strftime('%Y-%m-%d')) }}
-                                                    {{ render_field(add_item_form.comments) }}</dl>
-                                                {{ add_item_form.csrf_token }}
+                                                <dl>{{ render_field(upd_item_form.watchlist, value = curr_watch_name) }}
+                                                    {{ render_field(upd_item_form.ticker, value = item.ticker, readonly = 'readonly') }}
+                                                    {{ render_field(upd_item_form.quantity) }}
+                                                    {{ render_field(upd_item_form.price) }}
+                                                    {{ render_field(upd_item_form.side) }}
+                                                    {{ render_field(upd_item_form.trade_date, value = item.trade_date.strftime('%Y-%m-%d')) }}
+                                                    {{ render_field(upd_item_form.comments) }}</dl>
+                                                {{ upd_item_form.csrf_token }}
                                                 <button type="submit" name="button" class="btn btn-primary">Save Changes</button>
                                             </form>
                                         </div>
