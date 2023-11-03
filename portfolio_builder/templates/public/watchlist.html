@@ -97,13 +97,11 @@
                     </div>
                     <div class="modal-body">
                         <form class="group-removal" action="{{ url_for('watchlist.delete_watchlist') }}" method="post">
-                            <span class="selection-label">Select a Watchlist</span>
-                            <select class="watchlist-selector" name="watchlist_group_removed">
-                                {% for name in watch_names %}
-                                    <option value="{{ name }}">{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn-new-wl">Remove Watchlist</button>
+                            <span class="selection-label">
+                                <dl>{{ render_field(select_watch_form.name) }}</dl>
+                                <p>{{ select_watch_form.submit() }}</p>
+                                {{ select_watch_form.csrf_token }}
+                            </span>
                         </form>
                     </div>
                 </div>

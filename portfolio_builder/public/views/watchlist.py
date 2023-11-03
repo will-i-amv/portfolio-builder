@@ -108,18 +108,29 @@ def delete_watchlist() -> Response:
 
     :return: A redirect response to the 'watchlist.index' route.
     """
-    if not request.method == "POST":
-        return redirect(url_for('watchlist.index'))
-    else:
-        watch_name = request.form.get('watchlist_group_removed')
+    watch_names = [
+        item.name
+        for item in get_watchlists(
+            filters=[Watchlist.user_id==current_user.id], # type: ignore 
+        )
+    ]
+    form = SelectWatchlistForm()
+    form.name.choices =  [
+        (item, item)
+        for item in watch_names
+    ]
+    if form.validate_on_submit():
+        watch_name = form.name.data
         watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
-        if not watchlist:
+        if watchlist is None:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
             db.session.delete(watchlist)
             db.session.commit()
             flash(f"The watchlist '{watch_name}' has been deleted.")
-        return redirect(url_for('watchlist.index'))
+    elif form.errors:
+        flash_errors(form)
+    return redirect(url_for('watchlist.index'))
 
 
 @bp.route('/<watch_name>/add', methods=['POST'])
