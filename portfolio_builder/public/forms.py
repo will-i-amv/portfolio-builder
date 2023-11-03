@@ -38,7 +38,6 @@ class AddWatchlistForm(FlaskForm):
         ])
         if watchlist is not None:
             raise ValidationError(f"The watchlist '{input_name}' already exists.")
-        return True
 
 
 class SelectWatchlistForm(FlaskForm):
