@@ -30,9 +30,9 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
-                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
-                            <p>{{ add_watchlist_form.submit() }}</p>
-                            {{ add_watchlist_form.csrf_token }}
+                            <dl>{{ render_field(add_watch_form.name) }}</dl>
+                            <p>{{ add_watch_form.submit() }}</p>
+                            {{ add_watch_form.csrf_token }}
                         </form>
                     </div>
                 </div>
@@ -41,9 +41,9 @@
     {% else %}
         <form class="group-selection" action="{{ url_for('watchlist.index') }}" method="post">
             <span class="selection-label">
-                <dl>{{ render_field(select_form.name) }}</dl>
-                <p>{{ select_form.submit() }}</p>
-                {{ select_form.csrf_token }}
+                <dl>{{ render_field(select_watch_form.name) }}</dl>
+                <p>{{ select_watch_form.submit() }}</p>
+                {{ select_watch_form.csrf_token }}
             </span>
         </form>
         <br />
@@ -80,9 +80,9 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('watchlist.add_watchlist') }}" method="post">
-                            <dl>{{ render_field(add_watchlist_form.name) }}</dl>
-                            <p>{{ add_watchlist_form.submit() }}</p>
-                            {{ add_watchlist_form.csrf_token }}
+                            <dl>{{ render_field(add_watch_form.name) }}</dl>
+                            <p>{{ add_watch_form.submit() }}</p>
+                            {{ add_watch_form.csrf_token }}
                         </form>
                     </div>
                 </div>

@@ -44,17 +44,17 @@ def index() -> str:
             filters=[Watchlist.user_id==current_user.id], # type: ignore 
         )
     ]
-    select_form = SelectWatchlistForm()
-    add_watchlist_form = AddWatchlistForm()
-    add_item_form = AddItemForm()
-    select_form.name.choices =  [
+    add_watch_form = AddWatchlistForm()
+    select_watch_form = SelectWatchlistForm()
+    select_watch_form.name.choices =  [
         (item, item)
         for item in watch_names
     ]
-    if select_form.validate_on_submit():
-        curr_watch_name = select_form.name.data # Current watchlist name
+    if select_watch_form.validate_on_submit():
+        curr_watch_name = select_watch_form.name.data # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
+    add_item_form = AddItemForm()
     watch_items = get_watch_items(filters=[
         Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == curr_watch_name,
@@ -63,8 +63,8 @@ def index() -> str:
     securities = get_securities(filters=[db.literal(True)])
     return render_template(
         "public/watchlist.html", 
-        select_form=select_form,
-        add_watchlist_form=add_watchlist_form,
+        select_watch_form=select_watch_form,
+        add_watch_form=add_watch_form,
         add_item_form=add_item_form,
         curr_watch_name=curr_watch_name,
         securities=securities,
@@ -131,19 +131,19 @@ def add(watch_name: str) -> Response:
     Returns:
         Response: A redirect response to the `watchlist.index` endpoint.
     """
-    add_item_form = AddItemForm()
-    if add_item_form.validate_on_submit():
+    form = AddItemForm()
+    if form.validate_on_submit():
         watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
             item = WatchlistItem(
-                ticker=add_item_form.ticker.data, 
-                quantity=add_item_form.quantity.data,
-                price=add_item_form.price.data, 
-                side=add_item_form.side.data,  
-                trade_date=add_item_form.trade_date.data,
-                comments=add_item_form.comments.data, 
+                ticker=form.ticker.data, 
+                quantity=form.quantity.data,
+                price=form.price.data, 
+                side=form.side.data,  
+                trade_date=form.trade_date.data,
+                comments=form.comments.data, 
                 watchlist_id=watchlist.id
             )
             db.session.add(item)
@@ -154,8 +154,8 @@ def add(watch_name: str) -> Response:
                 func=load_prices_ticker,
                 args=[item.ticker],
             ) # task executes only once, immediately.
-    elif add_item_form.errors:
-        flash_errors(add_item_form)
+    elif form.errors:
+        flash_errors(form)
     return redirect(url_for("watchlist.index"))
 
 
@@ -173,8 +173,8 @@ def update(watch_name: str, ticker: str) -> Response:
     Returns:
         Response: Redirects the user to the watchlist index page.
     """
-    add_item_form = AddItemForm()
-    if add_item_form.validate_on_submit():
+    form = AddItemForm()
+    if form.validate_on_submit():
         last_item = get_first_watch_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
@@ -186,19 +186,19 @@ def update(watch_name: str, ticker: str) -> Response:
         else:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
-                ticker=add_item_form.ticker.data, 
-                quantity=add_item_form.quantity.data,
-                price=add_item_form.price.data, 
-                side=add_item_form.side.data, 
-                trade_date=add_item_form.trade_date.data,
-                comments=add_item_form.comments.data,
+                ticker=form.ticker.data, 
+                quantity=form.quantity.data,
+                price=form.price.data, 
+                side=form.side.data, 
+                trade_date=form.trade_date.data,
+                comments=form.comments.data,
                 watchlist_id=last_item.watchlist_id
             )
             db.session.add_all([last_item, new_item])
             db.session.commit()
             flash(f"The ticker '{new_item.ticker}' has been updated.")
-    elif add_item_form.errors:
-        flash_errors(add_item_form)
+    elif form.errors:
+        flash_errors(form)
     return redirect(url_for("watchlist.index"))
 
 
