@@ -41,7 +41,7 @@
     {% else %}
         <form class="group-selection" action="{{ url_for('watchlist.index') }}" method="post">
             <span class="selection-label">
-                <dl>{{ render_field(select_form.watchlist) }}</dl>
+                <dl>{{ render_field(select_form.name) }}</dl>
                 <p>{{ select_form.submit() }}</p>
                 {{ select_form.csrf_token }}
             </span>

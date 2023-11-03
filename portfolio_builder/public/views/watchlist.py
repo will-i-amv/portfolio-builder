@@ -47,12 +47,12 @@ def index() -> str:
     select_form = SelectWatchlistForm()
     add_watchlist_form = AddWatchlistForm()
     add_item_form = AddItemForm()
-    select_form.watchlist.choices =  [
+    select_form.name.choices =  [
         (item, item)
         for item in watch_names
     ]
     if select_form.validate_on_submit():
-        curr_watch_name = select_form.watchlist.data # Current watchlist name
+        curr_watch_name = select_form.name.data # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
     watch_items = get_watch_items(filters=[

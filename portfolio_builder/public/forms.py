@@ -8,6 +8,10 @@ from wtforms import (
     DateField, DecimalField, HiddenField, IntegerField, 
     StringField, SubmitField, SelectField, TextAreaField
 )
+from wtforms.validators import (
+    InputRequired, Length, NumberRange, 
+    Optional, ValidationError
+)
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
@@ -16,26 +20,45 @@ from portfolio_builder.public.models import (
 )
 
 
-class SelectWatchlistForm(FlaskForm):
-    watchlist = SelectField("Select a Watchlist",  validators=[v.InputRequired()])
-    submit = SubmitField("Get Overview")
-
-
 class AddWatchlistForm(FlaskForm):
     name = StringField(
-        "Watchlist Name",
-        validators=[v.InputRequired(), v.Length(min=1, max=25)]
+        "New Watchlist",
+        validators=[
+            InputRequired(), 
+            Length(min=3, max=25)
+        ]
     )
     submit = SubmitField("Add")
 
     def validate_name(self, name: StringField) -> None:
         input_name = name.data
-        watch_obj = get_first_watchlist(filters=[
+        watchlist = get_first_watchlist(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name==input_name,
         ])
-        if watch_obj:
-            raise v.ValidationError(f"The watchlist {input_name} already exists.")
+        if watchlist is not None:
+            raise ValidationError(f"The watchlist '{input_name}' already exists.")
+        return True
+
+
+class SelectWatchlistForm(FlaskForm):
+    name = SelectField(
+        "Available Watchlists",
+        validators=[
+            InputRequired(),
+            Length(min=3, max=25)
+        ]
+    )
+    submit = SubmitField("Select")
+
+    def validate_name(self, name: SelectField) -> None:
+        input_name = name.data
+        watchlist = get_first_watchlist(filters=[
+            Watchlist.user_id==current_user.id, # type: ignore
+            Watchlist.name==input_name,
+        ])
+        if watchlist is None:
+            raise ValidationError(f"The watchlist '{input_name}' doesn't exist.")
 
 
 class AddItemForm(FlaskForm):
