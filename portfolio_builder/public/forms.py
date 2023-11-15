@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Optional
 
 from flask_login import current_user
 from flask_wtf import FlaskForm
@@ -9,14 +10,25 @@ from wtforms import (
 )
 from wtforms.validators import (
     InputRequired, Length, NumberRange, 
-    Optional, ValidationError
+    Optional as OptionalField, ValidationError
 )
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_first_watchlist, get_first_watch_item, get_watch_items, get_default_date, 
+    get_first_watchlist, get_first_watch_item, get_watch_items, 
     Security, Watchlist, WatchlistItem
 )
+
+
+def get_default_date(date_: Optional[dt.date] = None) -> dt.date:
+    if date_ is None:
+        date_ = dt.date.today()
+    weekday = dt.date.isoweekday(date_)
+    if weekday == 6: # Saturday
+        date_ = date_ - dt.timedelta(days=1)
+    elif weekday == 7: # Sunday
+        date_ = date_ - dt.timedelta(days=2)
+    return date_
 
 
 class AddWatchlistForm(FlaskForm):
@@ -111,7 +123,7 @@ class ItemForm(FlaskForm):
     )
     comments = TextAreaField(
         "Comments",
-        validators=[Optional(), Length(max=140)]
+        validators=[OptionalField(), Length(max=140)]
     )
 
     def validate_ticker(self, ticker: StringField) -> None:

@@ -9,17 +9,6 @@ from sqlalchemy.sql.elements import BinaryExpression
 from portfolio_builder import db
 
 
-def get_default_date(date_: Optional[dt.date] = None) -> dt.date:
-    if date_ is None:
-        date_ = dt.date.today()
-    weekday = dt.date.isoweekday(date_)
-    if weekday == 6: # Saturday
-        date_ = date_ - dt.timedelta(days=1)
-    elif weekday == 7: # Sunday
-        date_ = date_ - dt.timedelta(days=2)
-    return date_
-
-
 class Security(db.Model):
     __tablename__ = "securities"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
