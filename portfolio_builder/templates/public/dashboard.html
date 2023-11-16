@@ -32,18 +32,18 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Quantity</th>
-                            <th>Average Price</th>
+                            <th>Ticker</th>
+                            <th>Net Quantity</th>
+                            <th>Realized PnL</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in summary %}
                             <tr class="watchlist-rows">
-                                {% if item.quantity != 0 %}
+                                {% if item.net_quantity != 0 %}
                                     <td class="c2">{{ item.ticker }}</td>
-                                    <td class="c3">{{ item.quantity }}</td>
-                                    <td class="c3">{{ item.average_cost }}</td>
+                                    <td class="c3">{{ item.net_quantity }}</td>
+                                    <td class="c3">{{ item.realized_pnl }}</td>
                                 {% endif %}
                             </tr>
                         {% endfor %}

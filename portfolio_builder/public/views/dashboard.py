@@ -1,3 +1,4 @@
+from collections import deque
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -9,10 +10,43 @@ from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Security,
     PriceMgr, WatchlistMgr, WatchlistItemMgr
 )
-from portfolio_builder.public.portfolio import FifoAccounting
 
 
 bp = Blueprint('dashboard', __name__)
+
+
+def calc_fifo(df: pd.DataFrame) -> pd.DataFrame:
+    df2 = df.copy().assign(net_quantity=0, realized_pnl=0.0)
+    net_quantity = 0
+    realized_pnl = 0
+    inventory = deque() # Queue to track the inventory of stocks
+    for idx, row in df2.iterrows():
+        if row['side'] == 'buy':
+            inventory.append({'quantity': row['quantity'], 'price': row['price']})
+            net_quantity += row['quantity']
+        else:
+            last_sold_qty = row['quantity']
+            last_sold_price = row['price']
+            remaining_qty = last_sold_qty
+            while remaining_qty > 0 and inventory:
+                first_item = next(iter(inventory))
+                first_purchase_qty = first_item['quantity']
+                first_purchase_price = first_item['price']
+                if first_purchase_qty >= remaining_qty:
+                    # The selling quantity is entirely covered by the earliest buying transaction
+                    realized_pnl += (last_sold_price - first_purchase_price) * remaining_qty
+                    first_item['quantity'] = first_purchase_qty - remaining_qty # In-place operation, be careful.
+                    net_quantity -= remaining_qty
+                    remaining_qty = 0
+                else:
+                    # The selling quantity exceeds the earliest buying transaction
+                    realized_pnl += (last_sold_price - first_purchase_price) * first_purchase_qty
+                    remaining_qty -= first_purchase_qty
+                    net_quantity -= first_purchase_qty
+                    inventory.popleft()
+        df2.at[idx, 'net_quantity'] = net_quantity
+        df2.at[idx, 'realized_pnl'] = realized_pnl
+    return df2
 
 
 def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
@@ -39,25 +73,26 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
                 WatchlistItem.ticker,
                 WatchlistItem.quantity,
                 WatchlistItem.price,
+                WatchlistItem.side,
                 WatchlistItem.trade_date.label("date")
             ],
             orderby=[WatchlistItem.trade_date]
         )
-        fifo_accounting = FifoAccounting(trade_history)
-        fifo_accounting.calc_fifo()
-        df_positions = (
+        df = (
             pd
             .DataFrame(
-                data=fifo_accounting.breakdown, 
-                columns=['date', 'quantity', 'average_cost']
+                data=trade_history, 
+                columns=['ticker', 'quantity', 'price', 'side', 'date']
             )
             .astype({
-                'date': 'datetime64[ns]', 
-                'quantity': 'float64', 
-                'average_cost': 'float64',
+                'quantity': 'int64', 
+                'price': 'float64', 
+                'date': 'datetime64[ns]',
             })
+            .sort_values(by=['date'])
         )
-        portf_pos[ticker] = df_positions
+        df_positions = calc_fifo(df)
+        portf_pos[ticker] = df_positions.loc[:, ['date', 'net_quantity', 'realized_pnl']]
     return portf_pos
 
 
@@ -85,11 +120,11 @@ def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
             pd
             .merge(df_prices, df_positions, on=['date'], how='left')
             .astype({
-                'quantity': 'float64', 
+                'net_quantity': 'float64', 
                 'price': 'float64',
             })
             .fillna(method='ffill')
-            .assign(market_val=lambda x: x['quantity'] * x['price'])
+            .assign(market_val=lambda x: x['net_quantity'] * x['price'])
             .round({'market_val': 3})
             .loc[:, ['date', 'market_val']]
             .rename(columns={'market_val': f'market_val_{ticker}'})
