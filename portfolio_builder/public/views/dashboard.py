@@ -54,7 +54,7 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
         item.ticker 
         for item in WatchlistItemMgr.get_items(
             filters=[
-                Watchlist.user_id==1, # type: ignore
+                Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name == watchlist_name,
             ],
             entities=[WatchlistItem.ticker],
