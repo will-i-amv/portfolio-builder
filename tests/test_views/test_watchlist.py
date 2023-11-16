@@ -4,7 +4,7 @@ import pytest
 from portfolio_builder.auth.models import User
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Security,
-    get_watch_items
+    WatchlistItemMgr
 )
 from portfolio_builder.public.tasks import load_securities_csv
 
@@ -51,7 +51,7 @@ class TestAdd:
             },
         )
         assert response.status_code == 302
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
@@ -124,14 +124,14 @@ class TestDelete:
         # Deletes a specific ticker from a watchlist.
         ticker = 'AAPL'
         watch_name = "Test_Watchlist"
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
         ) == 1
         response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
         assert response.status_code == 302
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
@@ -148,7 +148,7 @@ class TestDelete:
         ticker1 = 'AAPL'
         ticker2 = 'AMZN'
         watch_name = "Test_Watchlist"
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker.in_([ticker1, ticker2])
@@ -156,7 +156,7 @@ class TestDelete:
         response = client.post(f'/watchlist/{watch_name}/{ticker1}/delete')
         response = client.post(f'/watchlist/{watch_name}/{ticker2}/delete')
         assert response.status_code == 302
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker.in_([ticker1, ticker2])
@@ -171,13 +171,13 @@ class TestDelete:
     def test_delete_nonexistent_ticker(self, client, loaded_db):
         ticker = 'GOOG'
         watch_name = "Test_Watchlist"
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
         ) == 0
         response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
@@ -200,14 +200,14 @@ class TestDelete:
     def test_delete_ticker_unauthenticated(self, client, loaded_db):
         ticker = 'AAPL'
         watch_name = "Test_Watchlist"
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])
         ) == 1
         response = client.post(f'/watchlist/{watch_name}/{ticker}/delete')
         assert response.status_code == 302
-        assert len(get_watch_items(filters=[
+        assert len(WatchlistItemMgr.get_items(filters=[
             Watchlist.user_id==1, 
             Watchlist.name==watch_name, 
             WatchlistItem.ticker==ticker])

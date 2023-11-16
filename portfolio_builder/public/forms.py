@@ -15,8 +15,8 @@ from wtforms.validators import (
 
 from portfolio_builder import db
 from portfolio_builder.public.models import (
-    get_first_watchlist, get_first_watch_item, get_watch_items, 
-    Security, Watchlist, WatchlistItem
+    Security, Watchlist, WatchlistItem, 
+    WatchlistMgr, WatchlistItemMgr
 )
 
 
@@ -43,7 +43,7 @@ class AddWatchlistForm(FlaskForm):
 
     def validate_name(self, name: StringField) -> None:
         input_name = name.data
-        watchlist = get_first_watchlist(filters=[
+        watchlist = WatchlistMgr.get_first_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name==input_name,
         ])
@@ -63,7 +63,7 @@ class SelectWatchlistForm(FlaskForm):
 
     def validate_name(self, name: SelectField) -> None:
         input_name = name.data
-        watchlist = get_first_watchlist(filters=[
+        watchlist = WatchlistMgr.get_first_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name==input_name,
         ])
@@ -168,7 +168,7 @@ class UpdateItemForm(ItemForm):
         if input_side == 'sell':
             net_asset_values = [ 
                 item.flows
-                for item in get_watch_items(
+                for item in WatchlistItemMgr.get_items(
                     filters=[
                         Watchlist.name == self.watchlist.data,
                         WatchlistItem.ticker == self.ticker.data,
@@ -196,7 +196,7 @@ class UpdateItemForm(ItemForm):
         input_trade_date = trade_date.data
         input_ticker = self.ticker.data
         potential_trade_date = (
-            get_first_watch_item(filters=[
+            WatchlistItemMgr.get_first_item(filters=[
                 Watchlist.name == self.watchlist.data,
                 WatchlistItem.ticker == self.ticker.data,
                 WatchlistItem.is_last_trade == True,

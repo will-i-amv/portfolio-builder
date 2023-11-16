@@ -11,9 +11,8 @@ from portfolio_builder.public.forms import (
     AddItemForm, UpdateItemForm
 )
 from portfolio_builder.public.models import (
-    Watchlist, WatchlistItem,
-    get_securities, get_first_watchlist, get_watchlists, 
-    get_first_watch_item, get_watch_items
+    Watchlist, WatchlistItem, 
+    SecurityMgr, WatchlistMgr, WatchlistItemMgr
 )
 from portfolio_builder.public.tasks import load_prices_ticker
 
@@ -42,7 +41,7 @@ def index() -> str:
     """
     watch_names = [
         item.name
-        for item in get_watchlists(
+        for item in WatchlistMgr.get_items(
             filters=[Watchlist.user_id==current_user.id], # type: ignore 
         )
     ]
@@ -58,12 +57,12 @@ def index() -> str:
         curr_watch_name = next(iter(watch_names), '')
     add_item_form = AddItemForm()
     upd_item_form = UpdateItemForm()
-    watch_items = get_watch_items(filters=[
+    watch_items = WatchlistItemMgr.get_items(filters=[
         Watchlist.user_id==current_user.id, # type: ignore
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
-    securities = get_securities(filters=[db.literal(True)])
+    securities = SecurityMgr.get_items(filters=[db.literal(True)])
     return render_template(
         "public/watchlist.html", 
         select_watch_form=select_watch_form,
@@ -111,7 +110,7 @@ def delete_watchlist() -> Response:
     """
     watch_names = [
         item.name
-        for item in get_watchlists(
+        for item in WatchlistMgr.get_items(
             filters=[Watchlist.user_id==current_user.id], # type: ignore 
         )
     ]
@@ -122,7 +121,7 @@ def delete_watchlist() -> Response:
     ]
     if form.validate_on_submit():
         watch_name = form.name.data
-        watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
+        watchlist = WatchlistMgr.get_first_item(filters=[Watchlist.name==watch_name])
         if watchlist is None:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -148,7 +147,7 @@ def add(watch_name: str) -> Response:
     """
     form = AddItemForm()
     if form.validate_on_submit():
-        watchlist = get_first_watchlist(filters=[Watchlist.name==watch_name])
+        watchlist = WatchlistMgr.get_first_item(filters=[Watchlist.name==watch_name])
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -190,7 +189,7 @@ def update(watch_name: str, ticker: str) -> Response:
     """
     form = UpdateItemForm()
     if form.validate_on_submit():
-        last_item = get_first_watch_item(filters=[
+        last_item = WatchlistItemMgr.get_first_item(filters=[
             Watchlist.user_id==current_user.id, # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
@@ -232,7 +231,7 @@ def delete(watch_name: str, ticker: str) -> Response:
     """
     ids = [
         item.id
-        for item in get_watch_items(
+        for item in WatchlistItemMgr.get_items(
             filters=[
                 Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name == watch_name,
