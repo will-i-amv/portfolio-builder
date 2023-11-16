@@ -20,14 +20,14 @@ class Security(db.Model):
     isin = db.Column(db.String(20))
     prices = db.relationship(
         "Price",
-        backref="securities", 
+        backref="securities",
         passive_deletes=True
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Security Name: {self.name}, " + 
-            f"Ticker Name: {self.ticker}, " + 
+            f"<Security Name: {self.name}, " +
+            f"Ticker Name: {self.ticker}, " +
             f"Country: {self.country}>"
         )
 
@@ -43,14 +43,14 @@ class Price(db.Model):
     close_price = db.Column(db.Numeric(11, 6), nullable=False)
     ticker_id = db.Column(
         db.Integer,
-        db.ForeignKey("securities.id"), 
+        db.ForeignKey("securities.id"),
         nullable=False
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Date: {self.date}, " + 
-            f"Ticker ID: {self.ticker_id}, " + 
+            f"<Date: {self.date}, " +
+            f"Ticker ID: {self.ticker_id}, " +
             f"Close Price: {self.close_price}>"
         )
 
@@ -61,12 +61,12 @@ class Watchlist(db.Model):
     name = db.Column(db.String(25), nullable=False)
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey("users.id", ondelete="CASCADE"), 
+        db.ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
     items = db.relationship(
         "WatchlistItem",
-        backref="watchlists", 
+        backref="watchlists",
         passive_deletes=True
     )
 
@@ -82,7 +82,11 @@ class WatchlistItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     side = db.Column(db.String(5), nullable=False)
     trade_date = db.Column(db.Date, nullable=False)
-    is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
+    is_last_trade = db.Column(
+        db.Boolean,
+        server_default=expression.true(),
+        nullable=False
+    )
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     comments = db.Column(db.String(140))
     watchlist_id = db.Column(
@@ -98,7 +102,7 @@ class WatchlistItem(db.Model):
 class SecurityMgr:
     @classmethod
     def get_items(
-        cls, 
+        cls,
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
@@ -129,7 +133,7 @@ class SecurityMgr:
 class PriceMgr:
     @classmethod
     def get_items(
-        cls, 
+        cls,
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
@@ -137,18 +141,19 @@ class PriceMgr:
         if not entities:
             entities = [Price.date, Price.close_price]
         if not orderby:
-            orderby = [Price.date] 
+            orderby = [Price.date]
         prices = (
             db
             .session
             .query(Price)
-            .join(Security, onclause=(Price.ticker_id==Security.id))
+            .join(Security, onclause=(Price.ticker_id == Security.id))
             .filter(*filters)
             .with_entities(*entities)
             .order_by(*orderby)
             .all()
         )
         return prices
+
 
 class WatchlistMgr:
     @classmethod
@@ -166,17 +171,16 @@ class WatchlistMgr:
         item = cls._base_query(filters).first()
         return item
 
-
     @classmethod
     def get_items(
-        cls, 
+        cls,
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
     ) -> List[Row[Tuple[Any, Any]]]:
-        if not entities: 
+        if not entities:
             entities = [Watchlist.name]
-        if not orderby: 
+        if not orderby:
             orderby = [Watchlist.id]
         query = cls._base_query(filters)
         items = (
@@ -187,14 +191,15 @@ class WatchlistMgr:
         )
         return items
 
-class WatchlistItemMgr: 
+
+class WatchlistItemMgr:
     @classmethod
     def _base_query(cls, filters: List[BinaryExpression]) -> Query[WatchlistItem]:
         query = (
             db
             .session
             .query(WatchlistItem)
-            .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+            .join(Watchlist, onclause=(WatchlistItem.watchlist_id == Watchlist.id))
             .filter(*filters)
         )
         return query
@@ -208,12 +213,12 @@ class WatchlistItemMgr:
 
     @classmethod
     def get_items(
-        cls, 
+        cls,
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
     ) -> List[Row[Tuple[Any, Any]]]:
-        if not entities: 
+        if not entities:
             entities = [
                 WatchlistItem.id,
                 WatchlistItem.ticker,
@@ -223,7 +228,7 @@ class WatchlistItemMgr:
                 WatchlistItem.trade_date,
                 WatchlistItem.comments,
             ]
-        if not orderby: 
+        if not orderby:
             orderby = [WatchlistItem.id]
         query = cls._base_query(filters)
         items = (
@@ -236,7 +241,7 @@ class WatchlistItemMgr:
 
     @classmethod
     def get_grouped_items(
-        cls, 
+        cls,
         filters: List[BinaryExpression]
     ) -> List[Row[Tuple[Any, Any]]]:
         query = cls._base_query(filters)
