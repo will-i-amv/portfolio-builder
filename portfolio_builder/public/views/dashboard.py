@@ -15,34 +15,6 @@ from portfolio_builder.public.portfolio import FifoAccounting
 bp = Blueprint('dashboard', __name__)
 
 
-def calc_portf_val_daily(
-    ticker: str, 
-    df_prices: pd.DataFrame, 
-    df_positions: pd.DataFrame
-) ->  pd.DataFrame:
-    """
-    Combines the position breakdown with the daily prices to calculate
-    daily market value. The Daily market value is the positions quantity
-    multiplied by the market price.
-    """
-    df_portf_val = (
-        pd
-        .merge(df_prices, df_positions, on=['date'], how='left')
-        .astype({
-            'quantity': 'float64', 
-            'price': 'float64',
-        })
-        .fillna(method='ffill')
-        .assign(market_val=lambda x: x['quantity'] * x['price'])
-        .round({'market_val': 3})
-        .loc[:, ['date', 'market_val']]
-        .rename(columns={'market_val': f'market_val_{ticker}'})
-        .set_index('date')
-        .dropna()
-    )
-    return df_portf_val
-
-
 def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
     tickers = set([
         item.ticker 
@@ -90,6 +62,11 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
 
 
 def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    Combines the position breakdown with the daily prices to calculate
+    daily market value. The Daily market value is the positions quantity
+    multiplied by the market price.
+    """
     df_portf_val = pd.DataFrame()
     for ticker, df_positions in portf_pos.items():
         prices = PriceMgr.get_items(filters=[Security.ticker == ticker])
@@ -104,7 +81,21 @@ def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
                 'price': 'float64'
             })
         )
-        df = calc_portf_val_daily(ticker, df_prices, df_positions)
+        df = (
+            pd
+            .merge(df_prices, df_positions, on=['date'], how='left')
+            .astype({
+                'quantity': 'float64', 
+                'price': 'float64',
+            })
+            .fillna(method='ffill')
+            .assign(market_val=lambda x: x['quantity'] * x['price'])
+            .round({'market_val': 3})
+            .loc[:, ['date', 'market_val']]
+            .rename(columns={'market_val': f'market_val_{ticker}'})
+            .set_index('date')
+            .dropna()
+        )
         if df_portf_val.empty:
             df_portf_val = df
         else:
