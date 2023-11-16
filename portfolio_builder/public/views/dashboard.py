@@ -16,11 +16,15 @@ bp = Blueprint('dashboard', __name__)
 
 
 def calc_fifo(df: pd.DataFrame) -> pd.DataFrame:
-    df2 = df.copy().assign(net_quantity=0, realized_pnl=0.0)
+    df2 = (
+        df
+        .loc[:, ['date']]
+        .assign(net_quantity=0, realized_pnl=0.0)
+    )
     net_quantity = 0
     realized_pnl = 0
     inventory = deque() # Queue to track the inventory of stocks
-    for idx, row in df2.iterrows():
+    for idx, row in df.iterrows():
         if row['side'] == 'buy':
             inventory.append({'quantity': row['quantity'], 'price': row['price']})
             net_quantity += row['quantity']
@@ -92,7 +96,7 @@ def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
             .sort_values(by=['date'])
         )
         df_positions = calc_fifo(df)
-        portf_pos[ticker] = df_positions.loc[:, ['date', 'net_quantity', 'realized_pnl']]
+        portf_pos[ticker] = df_positions
     return portf_pos
 
 
