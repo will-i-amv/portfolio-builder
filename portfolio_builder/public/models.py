@@ -230,9 +230,9 @@ class WatchlistItemMgr:
             ]
         if not orderby:
             orderby = [WatchlistItem.id]
-        query = cls._base_query(filters)
         items = (
-            query
+            cls
+            ._base_query(filters)
             .with_entities(*entities)
             .order_by(*orderby)
             .all()
