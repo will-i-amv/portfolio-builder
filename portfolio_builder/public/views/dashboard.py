@@ -60,34 +60,7 @@ def calc_fifo(df: pd.DataFrame) -> pd.DataFrame:
     return df2
 
 
-def get_portf_positions(watchlist_name: str) -> pd.DataFrame:
-    trade_history = WatchlistItemMgr.get_items(
-        filters=[
-            Watchlist.user_id == current_user.id,  # type: ignore
-            Watchlist.name == watchlist_name,
-        ],
-        entities=[
-            WatchlistItem.ticker,
-            WatchlistItem.quantity,
-            WatchlistItem.price,
-            WatchlistItem.side,
-            WatchlistItem.trade_date.label("date")
-        ],
-        orderby=[WatchlistItem.ticker, WatchlistItem.trade_date]
-    )
-    df = (
-        pd
-        .DataFrame(
-            data=trade_history,
-            columns=['ticker', 'quantity', 'price', 'side', 'date']
-        )
-        .astype({
-            'quantity': 'int64',
-            'price': 'float64',
-            'date': 'datetime64[ns]',
-        })
-        .sort_values(by=['ticker', 'date'])
-    )
+def get_portf_positions(df: pd.DataFrame) -> pd.DataFrame:
     dfs_by_ticker = []
     for ticker in df['ticker'].unique():
         df_temp = calc_fifo(df[lambda x: x['ticker'] == ticker])
@@ -96,37 +69,18 @@ def get_portf_positions(watchlist_name: str) -> pd.DataFrame:
     return df_positions
 
 
-def get_portf_valuations(portf_pos: pd.DataFrame) -> pd.DataFrame:
+def get_portf_valuations(
+    df_portf_pos: pd.DataFrame,
+    df_prices: pd.DataFrame
+) -> pd.DataFrame:
     """
     Combines the position breakdown with the daily prices to calculate
     daily market value. The Daily market value is the positions quantity
     multiplied by the market price.
     """
-    tickers = portf_pos['ticker'].unique()
-    min_date = portf_pos['date'].dt.date.min()
-    max_date = portf_pos['date'].dt.date.max()
-    prices = PriceMgr.get_items(
-        filters=[
-            Security.ticker.in_(tickers),
-            Price.date.between(min_date, max_date)
-        ],
-        entities = [Security.ticker, Price.date, Price.close_price],
-        orderby = [Security.ticker, Price.date]
-    )
-    df_prices = (
-        pd
-        .DataFrame(
-            data=prices,
-            columns=["ticker", "date", "price"]
-        )
-        .astype({
-            'date': 'datetime64[ns]',
-            'price': 'float64'
-        })
-    )
     df = (
         pd
-        .merge(portf_pos, df_prices, on=['ticker', 'date'], how='outer')
+        .merge(df_portf_pos, df_prices, on=['ticker', 'date'], how='outer')
         .astype({
             'net_quantity': 'float64',
             'price': 'float64',
@@ -145,7 +99,7 @@ def get_portf_valuations(portf_pos: pd.DataFrame) -> pd.DataFrame:
     df_portf_val = (
         df
         .rename(columns={
-            col: f'market_val_{col}' 
+            col: f'market_val_{col}'
             for col in df.columns
         })
     )
@@ -329,15 +283,64 @@ def index() -> str:
         curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    portf_pos = get_portf_positions(curr_watch_name)
-    df_portf_val = get_portf_valuations(portf_pos)
+    trade_history = WatchlistItemMgr.get_items(
+        filters=[
+            Watchlist.user_id == current_user.id,  # type: ignore
+            Watchlist.name == curr_watch_name,
+        ],
+        entities=[
+            WatchlistItem.ticker,
+            WatchlistItem.quantity,
+            WatchlistItem.price,
+            WatchlistItem.side,
+            WatchlistItem.trade_date.label("date")
+        ],
+        orderby=[WatchlistItem.ticker, WatchlistItem.trade_date]
+    )
+    df_trade_history = (
+        pd
+        .DataFrame(
+            data=trade_history,
+            columns=['ticker', 'quantity', 'price', 'side', 'date']
+        )
+        .astype({
+            'quantity': 'int64',
+            'price': 'float64',
+            'date': 'datetime64[ns]',
+        })
+        .sort_values(by=['ticker', 'date'])
+    )
+    df_portf_pos = get_portf_positions(df_trade_history)
+    tickers = df_portf_pos['ticker'].unique()
+    min_date = df_portf_pos['date'].dt.date.min()
+    max_date = df_portf_pos['date'].dt.date.max()
+    prices = PriceMgr.get_items(
+        filters=[
+            Security.ticker.in_(tickers),
+            Price.date.between(min_date, max_date)
+        ],
+        entities=[Security.ticker, Price.date, Price.close_price],
+        orderby=[Security.ticker, Price.date]
+    )
+    df_prices = (
+        pd
+        .DataFrame(
+            data=prices,
+            columns=["ticker", "date", "price"]
+        )
+        .astype({
+            'date': 'datetime64[ns]',
+            'price': 'float64'
+        })
+    )
+    df_portf_val = get_portf_valuations(df_portf_pos, df_prices)
     portf_flows = WatchlistItemMgr.get_grouped_items(
         filters=[Watchlist.name == curr_watch_name]
     )
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     return render_template(
         'public/dashboard.html',
-        summary=get_last_portf_position(portf_pos),
+        summary=get_last_portf_position(df_portf_pos),
         line_chart=calc_portf_hpr(df_portf_val, df_portf_flows),
         pie_chart=get_pie_chart(df_portf_val),
         bar_chart=get_bar_chart(df_portf_val),
