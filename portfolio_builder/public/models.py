@@ -240,6 +240,24 @@ class WatchlistItemMgr:
         return items
 
     @classmethod
+    def get_distinct_items(
+        cls,
+        filters: List[BinaryExpression],
+        distinct_on: Optional[List[Any]] = None, 
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> List[Row[Tuple[Any, Any]]]:
+        items = (
+            cls.
+            _base_query(filters)
+            .with_entities(*entities)
+            .distinct(*distinct_on)
+            .order_by(*orderby)
+            .all()
+        )
+        return items
+
+    @classmethod
     def get_grouped_items(
         cls,
         filters: List[BinaryExpression]

@@ -11,8 +11,8 @@ from tiingo import TiingoClient
 
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.models import (
-    Price, Security, Watchlist, WatchlistItem,
-    SecurityMgr
+    Price, Security, WatchlistItem,
+    SecurityMgr, WatchlistItemMgr
 )
 
 
@@ -175,15 +175,11 @@ def load_prices(
 
 def load_prices_all_tickers() -> None:
     with scheduler.app.app_context():  # type: ignore
-        all_tickers = (
-            db
-            .session
-            .query(WatchlistItem)
-            .join(Watchlist, onclause=(WatchlistItem.watchlist_id == Watchlist.id))
-            .with_entities(WatchlistItem.ticker)
-            .distinct(WatchlistItem.ticker)
-            .order_by(WatchlistItem.ticker)
-            .all()
+        all_tickers = WatchlistItemMgr.get_distinct_items(
+            filters=[db.literal(True)],
+            distinct_on=[WatchlistItem.ticker],
+            entities=[WatchlistItem.ticker],
+            orderby=[WatchlistItem.ticker],
         )
         all_tickers = [
             item.ticker for item in all_tickers
