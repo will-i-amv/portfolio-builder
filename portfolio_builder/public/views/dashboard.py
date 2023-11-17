@@ -78,7 +78,7 @@ def get_portf_valuations(
     daily market value. The Daily market value is the positions quantity
     multiplied by the market price.
     """
-    df = (
+    df_portf_val = (
         pd
         .merge(df_portf_pos, df_prices, on=['ticker', 'date'], how='outer')
         .astype({
@@ -95,13 +95,6 @@ def get_portf_valuations(
             columns='ticker',
             values='market_val',
         )
-    )
-    df_portf_val = (
-        df
-        .rename(columns={
-            col: f'market_val_{col}'
-            for col in df.columns
-        })
     )
     return df_portf_val
 
@@ -202,14 +195,11 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
     df_initial.columns = ['ticker', 'market_val']
     df_temp = (
         df_initial
-        .assign(market_val=lambda x: x["market_val"].abs())
-        .replace({'ticker': {'market_val_': ''}}, regex=True)
         .assign(
             market_val_pct=lambda x:
                 (x["market_val"] / x["market_val"].sum()) * 100
         )
         .round({'market_val_pct': 2})
-        .loc[lambda x: x["market_val"] != 0.0]
         .sort_values(by=['market_val_pct'], ascending=False)
     )
     max_len = 6
