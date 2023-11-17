@@ -17,7 +17,7 @@ from portfolio_builder.public.models import (
 
 
 ASSET_TYPES = ['Stock']
-COUNTRIES = ['USA', 'GBR', 'JP', 'DEU', 'FRA'] # ISO 3166-1 alpha-3
+COUNTRIES = ['USA', 'GBR', 'JP', 'DEU', 'FRA']  # ISO 3166-1 alpha-3
 CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'JPY']
 EXCHANGES = [
     # US
@@ -81,9 +81,9 @@ def get_securities_tiingo(api_key: str) -> pd.DataFrame:
 
 
 def get_prices_tiingo(
-    api_key: str, 
-    ticker_ids: Dict[str, int], 
-    start_date: dt.date, 
+    api_key: str,
+    ticker_ids: Dict[str, int],
+    start_date: dt.date,
     end_date: dt.date
 ) -> pd.DataFrame:
     tiingo_client = TiingoClient({'session': True, 'api_key': api_key})
@@ -104,15 +104,15 @@ def get_prices_tiingo(
         .reset_index()
         .rename(columns={'index': 'date'})
         .melt('date', var_name='ticker_id', value_name='close_price')
-        .assign(**{'date': lambda x: pd.to_datetime(x['date']).dt.date}) # Just take date part
+        # Just take date part
+        .assign(**{'date': lambda x: pd.to_datetime(x['date']).dt.date})
         .astype({'ticker_id': 'int64', 'close_price': 'float64'})
     )
     return df_cleaned
 
 
-
 def load_securities_csv() -> None:
-    app = current_app._get_current_object() # type: ignore
+    app = current_app._get_current_object()  # type: ignore
     df = pd.read_csv(app.config['ROOT_DIR'] + '/data/securities.csv')
     df.to_sql(
         "securities",
@@ -123,7 +123,7 @@ def load_securities_csv() -> None:
 
 
 def load_securities() -> None:
-    app = current_app._get_current_object() # type: ignore
+    app = current_app._get_current_object()  # type: ignore
     API_KEY_TIINGO = app.config['API_KEY_TIINGO']
     API_KEY_EODHD = app.config['API_KEY_EODHD']
     try:
@@ -152,8 +152,8 @@ def load_securities() -> None:
 
 
 def load_prices(
-    tickers: List[str], 
-    start_date: dt.date, 
+    tickers: List[str],
+    start_date: dt.date,
     end_date: dt.date
 ) -> None:
     ticker_ids = dict(SecurityMgr.get_items(
@@ -161,9 +161,10 @@ def load_prices(
         entities=[Security.ticker, Security.id],
     ))
     if ticker_ids:
-        app = current_app._get_current_object() # type: ignore
+        app = current_app._get_current_object()  # type: ignore
         API_KEY_TIINGO = app.config['API_KEY_TIINGO']
-        df = get_prices_tiingo(API_KEY_TIINGO, ticker_ids, start_date, end_date)
+        df = get_prices_tiingo(
+            API_KEY_TIINGO, ticker_ids, start_date, end_date)
         df.to_sql(
             "prices",
             con=db.engine,
@@ -173,12 +174,12 @@ def load_prices(
 
 
 def load_prices_all_tickers() -> None:
-    with scheduler.app.app_context(): # type: ignore
+    with scheduler.app.app_context():  # type: ignore
         all_tickers = (
             db
             .session
             .query(WatchlistItem)
-            .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
+            .join(Watchlist, onclause=(WatchlistItem.watchlist_id == Watchlist.id))
             .with_entities(WatchlistItem.ticker)
             .distinct(WatchlistItem.ticker)
             .order_by(WatchlistItem.ticker)
@@ -194,12 +195,12 @@ def load_prices_all_tickers() -> None:
 
 
 def load_prices_ticker(ticker: str) -> None:
-    with scheduler.app.app_context(): # type: ignore
+    with scheduler.app.app_context():  # type: ignore
         first_price = (
             db
             .session
             .query(Price)
-            .join(Security, onclause=(Price.ticker_id==Security.id))
+            .join(Security, onclause=(Price.ticker_id == Security.id))
             .filter(Security.ticker == ticker)
             .first()
         )
