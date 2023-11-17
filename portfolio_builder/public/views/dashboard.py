@@ -177,7 +177,7 @@ def calc_portf_hpr(
     return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
+def get_last_portf_val(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
@@ -188,13 +188,11 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         return list(df_portf_val.itertuples(index=False))
     df_initial = (
         df_portf_val
+        .sort_index()
         .tail(1)
         .T
+        .set_axis(['market_val'], axis=1)
         .reset_index()
-    )
-    df_initial.columns = ['ticker', 'market_val']
-    df_temp = (
-        df_initial
         .assign(
             market_val_pct=lambda x:
                 (x["market_val"] / x["market_val"].sum()) * 100
@@ -202,15 +200,15 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         .round({'market_val_pct': 2})
         .sort_values(by=['market_val_pct'], ascending=False)
     )
-    max_len = 6
-    df_len = df_temp.shape[0]
-    if df_len < max_len:
-        return list(df_temp.itertuples(index=False))
+    no_assets = 6
+    max_no_assets = df_initial.shape[0]
+    if max_no_assets < no_assets:
+        return list(df_initial.itertuples(index=False))
     else:
-        df_top = df_temp.head(max_len)
+        df_top = df_initial.head(no_assets)
         df_bottom = (
-            df_temp
-            .tail(df_len - max_len)
+            df_initial
+            .tail(max_no_assets - no_assets)
             .pivot_table(
                 index='ticker',
                 margins=True,
@@ -222,30 +220,6 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         )
         df_final = pd.concat([df_top, df_bottom])
         return list(df_final.itertuples(index=False))
-
-
-def get_bar_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
-    """
-    Returns a named tuple of the 5 largest positions by absolute exposure
-    in descending order
-    """
-    if df_portf_val.empty:
-        return list(df_portf_val.itertuples(index=False))
-    df_initial = (
-        df_portf_val
-        .tail(1)
-        .T
-        .reset_index()
-    )
-    df_initial.columns = ['ticker', 'market_val']
-    df_final = (
-        df_initial
-        .replace({'ticker': {'market_val_': ''}}, regex=True)
-        .sort_values(by=['market_val'], ascending=False)
-        .loc[lambda x: x["market_val"] != 0.0]
-        .tail(5)
-    )
-    return list(df_final.itertuples(index=False))
 
 
 def get_last_portf_position(df_portf_pos: pd.DataFrame) -> List[tuple[Any, ...]]:
@@ -328,12 +302,15 @@ def index() -> str:
         filters=[Watchlist.name == curr_watch_name]
     )
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
+    df_portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows)
+    df_portf_pos_summary = get_last_portf_position(df_portf_pos)
+    df_portf_val_summary = get_last_portf_val(df_portf_val)
     return render_template(
         'public/dashboard.html',
-        summary=get_last_portf_position(df_portf_pos),
-        line_chart=calc_portf_hpr(df_portf_val, df_portf_flows),
-        pie_chart=get_pie_chart(df_portf_val),
-        bar_chart=get_bar_chart(df_portf_val),
+        summary=df_portf_pos_summary,
+        line_chart=df_portf_hpr,
+        pie_chart=df_portf_val_summary,
+        bar_chart=df_portf_val_summary,
         watch_names=watch_names,
         curr_watch_name=curr_watch_name,
     )
