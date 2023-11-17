@@ -225,6 +225,8 @@ def get_last_portf_val(
 
 
 def get_last_portf_position(df_portf_pos: pd.DataFrame) -> List[tuple[Any, ...]]:
+    if df_portf_pos.empty:
+        return list(df_portf_pos.itertuples(index=False))
     last_portf_pos = list(
         df_portf_pos
         .loc[lambda x: x.groupby('ticker')['date'].idxmax()]
