@@ -11,7 +11,8 @@ from tiingo import TiingoClient
 
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.models import (
-    Price, Security, Watchlist, WatchlistItem
+    Price, Security, Watchlist, WatchlistItem,
+    SecurityMgr
 )
 
 
@@ -155,14 +156,10 @@ def load_prices(
     start_date: dt.date, 
     end_date: dt.date
 ) -> None:
-    ticker_ids = dict(
-        db
-        .session
-        .query(Security)
-        .filter(Security.ticker.in_(tickers))
-        .with_entities(Security.ticker, Security.id)
-        .all()
-    )
+    ticker_ids = dict(SecurityMgr.get_items(
+        filters=[Security.ticker.in_(tickers)],
+        entities=[Security.ticker, Security.id],
+    ))
     if ticker_ids:
         app = current_app._get_current_object() # type: ignore
         API_KEY_TIINGO = app.config['API_KEY_TIINGO']
