@@ -224,7 +224,10 @@ def get_last_portf_val(
         return list(df_final.itertuples(index=False))
 
 
-def get_last_portf_position(df_portf_pos: pd.DataFrame) -> List[tuple[Any, ...]]:
+def get_last_portf_position(
+    df_portf_pos: pd.DataFrame,
+    no_assets: int = 10
+) -> List[tuple[Any, ...]]:
     if df_portf_pos.empty:
         return list(df_portf_pos.itertuples(index=False))
     last_portf_pos = list(
@@ -233,8 +236,9 @@ def get_last_portf_position(df_portf_pos: pd.DataFrame) -> List[tuple[Any, ...]]
         .drop(['date'], axis=1)
         .itertuples(index=False)
     )
-    if len(last_portf_pos) > 7:
-        return last_portf_pos[0:7]
+    max_no_assets = len(last_portf_pos)
+    if max_no_assets > no_assets:
+        return last_portf_pos[:no_assets]
     return last_portf_pos
 
 
