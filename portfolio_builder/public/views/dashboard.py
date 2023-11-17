@@ -177,7 +177,10 @@ def calc_portf_hpr(
     return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_last_portf_val(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
+def get_last_portf_val(
+    df_portf_val: pd.DataFrame,
+    no_assets: int = 10
+) -> List[tuple[Any, ...]]:
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
@@ -200,9 +203,8 @@ def get_last_portf_val(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         .round({'market_val_pct': 2})
         .sort_values(by=['market_val_pct'], ascending=False)
     )
-    no_assets = 6
     max_no_assets = df_initial.shape[0]
-    if max_no_assets < no_assets:
+    if no_assets > max_no_assets:
         return list(df_initial.itertuples(index=False))
     else:
         df_top = df_initial.head(no_assets)
