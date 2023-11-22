@@ -7,11 +7,11 @@ from flask_wtf import FlaskForm
 
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.forms import (
-    AddWatchlistForm, SelectWatchlistForm, 
+    AddWatchlistForm, SelectWatchlistForm,
     AddItemForm, UpdateItemForm
 )
 from portfolio_builder.public.models import (
-    Watchlist, WatchlistItem, 
+    Watchlist, WatchlistItem,
     SecurityMgr, WatchlistMgr, WatchlistItemMgr
 )
 from portfolio_builder.public.tasks import load_prices_ticker
@@ -28,7 +28,7 @@ def flash_errors(form: FlaskForm, category="warning"):
                 f"{getattr(form, field).label.text} - {error}",  # type: ignore
                 category
             )
-            
+
 
 @bp.route("/", methods=['GET', 'POST'])
 @login_required
@@ -42,29 +42,29 @@ def index() -> str:
     watch_names = [
         item.name
         for item in WatchlistMgr.get_items(
-            filters=[Watchlist.user_id==current_user.id], # type: ignore 
+            filters=[Watchlist.user_id == current_user.id],  # type: ignore
         )
     ]
     add_watch_form = AddWatchlistForm()
     select_watch_form = SelectWatchlistForm()
-    select_watch_form.name.choices =  [
+    select_watch_form.name.choices = [
         (item, item)
         for item in watch_names
     ]
     if select_watch_form.validate_on_submit():
-        curr_watch_name = select_watch_form.name.data # Current watchlist name
+        curr_watch_name = select_watch_form.name.data  # Current watchlist name
     else:
         curr_watch_name = next(iter(watch_names), '')
     add_item_form = AddItemForm()
     upd_item_form = UpdateItemForm()
     watch_items = WatchlistItemMgr.get_items(filters=[
-        Watchlist.user_id==current_user.id, # type: ignore
+        Watchlist.user_id == current_user.id,  # type: ignore
         Watchlist.name == curr_watch_name,
         WatchlistItem.is_last_trade == True,
     ])
     securities = SecurityMgr.get_items(filters=[db.literal(True)])
     return render_template(
-        "public/watchlist.html", 
+        "public/watchlist.html",
         select_watch_form=select_watch_form,
         add_watch_form=add_watch_form,
         add_item_form=add_item_form,
@@ -87,10 +87,10 @@ def add_watchlist() -> Response:
     """
     form = AddWatchlistForm()
     if form.validate_on_submit():
-        watchlist_name = form.name.data 
+        watchlist_name = form.name.data
         new_watchlist = Watchlist(
-            user_id=current_user.id, # type: ignore
-            name=watchlist_name, 
+            user_id=current_user.id,  # type: ignore
+            name=watchlist_name,
         )
         db.session.add(new_watchlist)
         db.session.commit()
@@ -111,17 +111,19 @@ def delete_watchlist() -> Response:
     watch_names = [
         item.name
         for item in WatchlistMgr.get_items(
-            filters=[Watchlist.user_id==current_user.id], # type: ignore 
+            filters=[Watchlist.user_id == current_user.id],  # type: ignore
         )
     ]
     form = SelectWatchlistForm()
-    form.name.choices =  [
+    form.name.choices = [
         (item, item)
         for item in watch_names
     ]
     if form.validate_on_submit():
         watch_name = form.name.data
-        watchlist = WatchlistMgr.get_first_item(filters=[Watchlist.name==watch_name])
+        watchlist = WatchlistMgr.get_first_item(
+            filters=[Watchlist.name == watch_name]
+        )
         if watchlist is None:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
@@ -147,27 +149,31 @@ def add(watch_name: str) -> Response:
     """
     form = AddItemForm()
     if form.validate_on_submit():
-        watchlist = WatchlistMgr.get_first_item(filters=[Watchlist.name==watch_name])
+        watchlist = WatchlistMgr.get_first_item(
+            filters=[Watchlist.name == watch_name]
+        )
         if not watchlist:
             flash(f"The watchlist '{watch_name}' does not exist.")
         else:
             item = WatchlistItem(
-                ticker=form.ticker.data, 
+                ticker=form.ticker.data,
                 quantity=form.quantity.data,
-                price=form.price.data, 
-                side=form.side.data,  
+                price=form.price.data,
+                side=form.side.data,
                 trade_date=form.trade_date.data,
-                comments=form.comments.data, 
+                comments=form.comments.data,
                 watchlist_id=watchlist.id
             )
             db.session.add(item)
             db.session.commit()
-            flash(f"The ticker '{item.ticker}' has been added to the watchlist.")
+            flash(
+                f"The ticker '{item.ticker}' has been added to the watchlist."
+            )
             scheduler.add_job(
                 id='add_db_last100day_prices',
                 func=load_prices_ticker,
                 args=[item.ticker],
-            ) # task executes only once, immediately.
+            )  # task executes only once, immediately.
     elif form.errors:
         flash_errors(form)
     return redirect(url_for("watchlist.index"))
@@ -190,7 +196,7 @@ def update(watch_name: str, ticker: str) -> Response:
     form = UpdateItemForm()
     if form.validate_on_submit():
         last_item = WatchlistItemMgr.get_first_item(filters=[
-            Watchlist.user_id==current_user.id, # type: ignore
+            Watchlist.user_id == current_user.id,  # type: ignore
             Watchlist.name == watch_name,
             WatchlistItem.ticker == ticker,
             WatchlistItem.is_last_trade == True,
@@ -200,10 +206,10 @@ def update(watch_name: str, ticker: str) -> Response:
         else:
             last_item.is_last_trade = False
             new_item = WatchlistItem(
-                ticker=form.ticker.data, 
+                ticker=form.ticker.data,
                 quantity=form.quantity.data,
-                price=form.price.data, 
-                side=form.side.data, 
+                price=form.price.data,
+                side=form.side.data,
                 trade_date=form.trade_date.data,
                 comments=form.comments.data,
                 watchlist_id=last_item.watchlist_id
@@ -233,7 +239,7 @@ def delete(watch_name: str, ticker: str) -> Response:
         item.id
         for item in WatchlistItemMgr.get_items(
             filters=[
-                Watchlist.user_id==current_user.id, # type: ignore
+                Watchlist.user_id == current_user.id,  # type: ignore
                 Watchlist.name == watch_name,
                 WatchlistItem.ticker == ticker,
             ],
@@ -242,14 +248,20 @@ def delete(watch_name: str, ticker: str) -> Response:
     ]
     if not ids:
         flash(
-            f"An error occurred while trying to delete " + 
+            f"An error occurred while trying to delete " +
             f"the items of ticker '{ticker}' from watchlist '{watch_name}'."
         )
     else:
-        db.session.query(WatchlistItem).filter(WatchlistItem.id.in_(ids)).delete()
+        _ = (
+            db
+            .session
+            .query(WatchlistItem)
+            .filter(WatchlistItem.id.in_(ids))
+            .delete()
+        )
         db.session.commit()
         flash(
-            f"The items of ticker '{ticker}' have been deleted " + 
+            f"The items of ticker '{ticker}' have been deleted " +
             f"from watchlist '{watch_name}'."
         )
     return redirect(url_for('watchlist.index'))
