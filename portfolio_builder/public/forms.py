@@ -195,15 +195,15 @@ class UpdateItemForm(ItemForm):
     def validate_trade_date(self, trade_date: DateField) -> None:
         input_trade_date = trade_date.data
         input_ticker = self.ticker.data
-        potential_trade_date = (
+        watch_item_obj = (
             WatchlistItemMgr.get_first_item(filters=[
                 Watchlist.name == self.watchlist.data,
                 WatchlistItem.ticker == self.ticker.data,
                 WatchlistItem.is_last_trade == True,
             ])
         )
-        if potential_trade_date:
-            last_trade_date = potential_trade_date.trade_date
+        if watch_item_obj:
+            last_trade_date = watch_item_obj.trade_date
             if input_trade_date < last_trade_date:
                 raise ValidationError(
                     f"The last trade date for ticker '{input_ticker}' " + 
