@@ -156,38 +156,44 @@ def load_prices(
     start_date: dt.date,
     end_date: dt.date
 ) -> None:
-    ticker_ids = dict(SecurityMgr.get_items(
+    df_tickers = SecurityMgr.get_items(
         filters=[Security.ticker.in_(tickers)],
         entities=[Security.ticker, Security.id],
-    ))
-    if ticker_ids:
-        app = current_app._get_current_object()  # type: ignore
-        API_KEY_TIINGO = app.config['API_KEY_TIINGO']
-        df = get_prices_tiingo(
-            API_KEY_TIINGO, ticker_ids, start_date, end_date)
-        df.to_sql(
-            "prices",
-            con=db.engine,
-            if_exists="append",
-            index=False
+    )
+    if not df_tickers.empty:
+        ticker_ids = (
+            df_tickers 
+            .set_index('ticker')
+            .to_dict()
+            .get('id', {})
         )
+        if ticker_ids:
+            app = current_app._get_current_object()  # type: ignore
+            API_KEY_TIINGO = app.config['API_KEY_TIINGO']
+            df = get_prices_tiingo(
+                API_KEY_TIINGO, ticker_ids, start_date, end_date)
+            df.to_sql(
+                "prices",
+                con=db.engine,
+                if_exists="append",
+                index=False
+            )
 
 
 def load_prices_all_tickers() -> None:
     with scheduler.app.app_context():  # type: ignore
-        all_tickers = WatchlistItemMgr.get_distinct_items(
+        df_all_tickers = WatchlistItemMgr.get_distinct_items(
             filters=[db.literal(True)],
             distinct_on=[WatchlistItem.ticker],
             entities=[WatchlistItem.ticker],
             orderby=[WatchlistItem.ticker],
         )
-        all_tickers = [
-            item.ticker for item in all_tickers
-        ]
-        if all_tickers:
-            end_date = dt.date.today() - dt.timedelta(days=1)
-            start_date = end_date
-            load_prices(all_tickers, start_date, end_date)
+        if not df_all_tickers.empty:
+            all_tickers = df_all_tickers.loc[:, 'ticker'].to_list()
+            if all_tickers:
+                end_date = dt.date.today() - dt.timedelta(days=1)
+                start_date = end_date
+                load_prices(all_tickers, start_date, end_date)
 
 
 def load_prices_ticker(ticker: str) -> None:

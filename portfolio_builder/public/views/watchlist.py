@@ -39,12 +39,10 @@ def index() -> str:
     Returns:
         str: A rendered HTML template with the necessary data.
     """
-    watch_names = [
-        item.name
-        for item in WatchlistMgr.get_items(
-            filters=[Watchlist.user_id == current_user.id],  # type: ignore
-        )
-    ]
+    df_watch_names = WatchlistMgr.get_items(
+        filters=[Watchlist.user_id == current_user.id],  # type: ignore
+    )
+    watch_names = df_watch_names.loc[:, 'name'].to_list()
     add_watch_form = AddWatchlistForm()
     select_watch_form = SelectWatchlistForm()
     select_watch_form.name.choices = [
@@ -57,12 +55,20 @@ def index() -> str:
         curr_watch_name = next(iter(watch_names), '')
     add_item_form = AddItemForm()
     upd_item_form = UpdateItemForm()
-    watch_items = WatchlistItemMgr.get_items(filters=[
-        Watchlist.user_id == current_user.id,  # type: ignore
-        Watchlist.name == curr_watch_name,
-        WatchlistItem.is_last_trade == True,
-    ])
-    securities = SecurityMgr.get_items(filters=[db.literal(True)])
+    watch_items = list(
+        WatchlistItemMgr
+        .get_items(filters=[
+            Watchlist.user_id == current_user.id,  # type: ignore
+            Watchlist.name == curr_watch_name,
+            WatchlistItem.is_last_trade == True,
+        ])
+        .itertuples(index=False)
+    )
+    securities = list(
+        SecurityMgr
+        .get_items(filters=[db.literal(True)])
+        .itertuples(index=False)
+    )
     return render_template(
         "public/watchlist.html",
         select_watch_form=select_watch_form,
@@ -108,12 +114,10 @@ def delete_watchlist() -> Response:
 
     :return: A redirect response to the 'watchlist.index' route.
     """
-    watch_names = [
-        item.name
-        for item in WatchlistMgr.get_items(
-            filters=[Watchlist.user_id == current_user.id],  # type: ignore
-        )
-    ]
+    df_watch_names = WatchlistMgr.get_items(
+        filters=[Watchlist.user_id == current_user.id],  # type: ignore
+    )
+    watch_names = df_watch_names.loc[:, 'name'].to_list()
     form = SelectWatchlistForm()
     form.name.choices = [
         (item, item)
@@ -235,28 +239,26 @@ def delete(watch_name: str, ticker: str) -> Response:
     Returns:
         Response: Redirects the user to the watchlist index page.
     """
-    ids = [
-        item.id
-        for item in WatchlistItemMgr.get_items(
-            filters=[
-                Watchlist.user_id == current_user.id,  # type: ignore
-                Watchlist.name == watch_name,
-                WatchlistItem.ticker == ticker,
-            ],
-            entities=[WatchlistItem.id]
-        )
-    ]
-    if not ids:
+    df_ids = WatchlistItemMgr.get_items(
+        filters=[
+            Watchlist.user_id == current_user.id,  # type: ignore
+            Watchlist.name == watch_name,
+            WatchlistItem.ticker == ticker,
+        ],
+        entities=[WatchlistItem.id]
+    )
+    if df_ids.empty:
         flash(
             f"An error occurred while trying to delete " +
             f"the items of ticker '{ticker}' from watchlist '{watch_name}'."
         )
     else:
+        IDs = df_ids.loc[:, 'id'].to_list()
         _ = (
             db
             .session
             .query(WatchlistItem)
-            .filter(WatchlistItem.id.in_(ids))
+            .filter(WatchlistItem.id.in_(IDs))
             .delete()
         )
         db.session.commit()

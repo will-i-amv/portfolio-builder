@@ -1,12 +1,20 @@
 import datetime as dt
 from typing import Any, List, Optional, Tuple
 
+import pandas as pd
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Query
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
+
+
+def query_to_df(query: Query) -> pd.DataFrame:
+    try:
+        return pd.read_sql(sql=query.statement, con=db.engine)
+    except:
+        return pd.DataFrame()
 
 
 class Security(db.Model):
@@ -106,7 +114,7 @@ class SecurityMgr:
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
-    ) -> List[Row[Tuple[Any, Any]]]:
+    ) -> pd.DataFrame:
         if not entities:
             entities = [
                 Security.name,
@@ -118,16 +126,15 @@ class SecurityMgr:
             ]
         if not orderby:
             orderby = [Security.ticker]
-        prices = (
+        query = (
             db
             .session
             .query(Security)
             .filter(*filters)
             .with_entities(*entities)
             .order_by(*orderby)
-            .all()
         )
-        return prices
+        return query_to_df(query)
 
 
 class PriceMgr:
@@ -162,19 +169,18 @@ class PriceMgr:
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
-    ) -> List[Row[Tuple[Any, Any]]]:
+    ) -> pd.DataFrame:
         if not entities:
             entities = [Price.date, Price.close_price]
         if not orderby:
             orderby = [Price.date]
-        prices = (
+        query = (
             cls
             ._base_query(filters)
             .with_entities(*entities)
             .order_by(*orderby)
-            .all()
         )
-        return prices
+        return query_to_df(query)
 
 
 class WatchlistMgr:
@@ -199,19 +205,18 @@ class WatchlistMgr:
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
-    ) -> List[Row[Tuple[Any, Any]]]:
+    ) -> pd.DataFrame:
         if not entities:
             entities = [Watchlist.name]
         if not orderby:
             orderby = [Watchlist.id]
-        query = cls._base_query(filters)
-        items = (
-            query
+        query = (
+            cls
+            ._base_query(filters)
             .with_entities(*entities)
             .order_by(*orderby)
-            .all()
         )
-        return items
+        return query_to_df(query)
 
 
 class WatchlistItemMgr:
@@ -239,7 +244,7 @@ class WatchlistItemMgr:
         filters: List[BinaryExpression],
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
-    ) -> List[Row[Tuple[Any, Any]]]:
+    ) -> pd.DataFrame:
         if not entities:
             entities = [
                 WatchlistItem.id,
@@ -252,14 +257,13 @@ class WatchlistItemMgr:
             ]
         if not orderby:
             orderby = [WatchlistItem.id]
-        items = (
+        query = (
             cls
             ._base_query(filters)
             .with_entities(*entities)
             .order_by(*orderby)
-            .all()
         )
-        return items
+        return query_to_df(query)
 
     @classmethod
     def get_distinct_items(
@@ -268,25 +272,24 @@ class WatchlistItemMgr:
         distinct_on: Optional[List[Any]] = None, 
         entities: Optional[List[Any]] = None,
         orderby: Optional[List[Any]] = None,
-    ) -> List[Row[Tuple[Any, Any]]]:
-        items = (
+    ) -> pd.DataFrame:
+        query = (
             cls.
             _base_query(filters)
             .with_entities(*entities)
             .distinct(*distinct_on)
             .order_by(*orderby)
-            .all()
         )
-        return items
+        return query_to_df(query)
 
     @classmethod
     def get_grouped_items(
         cls,
         filters: List[BinaryExpression]
-    ) -> List[Row[Tuple[Any, Any]]]:
-        query = cls._base_query(filters)
-        items = (
-            query
+    ) -> pd.DataFrame:
+        query = (
+            cls
+            ._base_query(filters)
             .group_by(func.date(WatchlistItem.trade_date))
             .with_entities(
                 func.date(WatchlistItem.trade_date).label('date'),
@@ -299,6 +302,5 @@ class WatchlistItemMgr:
                 .label('flows')
             )
             .order_by(func.date(WatchlistItem.trade_date))
-            .all()
         )
-        return items
+        return query_to_df(query)

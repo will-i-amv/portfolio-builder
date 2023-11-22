@@ -99,7 +99,7 @@ def calc_portf_valuations(
     return df_portf_val
 
 
-def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
+def calc_portf_flows_adjusted(df_flows: pd.DataFrame) -> pd.DataFrame:
     """
     Using the Holding Period Return (HPR) methodology. Purchases of
     securities are accounted as fund inflows and the sale of securities are
@@ -109,10 +109,8 @@ def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
     accurate calculation of the HPR which can be distorted as purchases and
     sells are added to the trades.
     """
-    df_flows = (
-        pd
-        .DataFrame(flows, columns=["date", "flows"])
-        .astype({'date': 'datetime64[ns]'})
+    df_flows_adj = (
+        df_flows
         .assign(
             inflows=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
             cash=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs().cumsum(),
@@ -122,7 +120,7 @@ def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
         .fillna(0)
         .drop(columns=['flows'])
     )
-    return df_flows
+    return df_flows_adj
 
 
 def calc_portf_hpr(
@@ -245,72 +243,63 @@ def calc_last_portf_position(
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index() -> str:
-    watch_names = [
-        item.name
-        for item in WatchlistMgr.get_items(
-            filters=[Watchlist.user_id == current_user.id],  # type: ignore
-        )
-    ]
+    df_watch_names = WatchlistMgr.get_items(filters=[
+        Watchlist.user_id == current_user.id  # type: ignore
+    ])
+    watch_names = df_watch_names.loc[:, 'name'].to_list()
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    trade_history = WatchlistItemMgr.get_items(
-        filters=[
-            Watchlist.user_id == current_user.id,  # type: ignore
-            Watchlist.name == curr_watch_name,
-        ],
-        entities=[
-            WatchlistItem.ticker,
-            WatchlistItem.quantity,
-            WatchlistItem.price,
-            WatchlistItem.side,
-            WatchlistItem.trade_date.label("date")
-        ],
-        orderby=[WatchlistItem.ticker, WatchlistItem.trade_date]
-    )
     df_trade_history = (
-        pd
-        .DataFrame(
-            data=trade_history,
-            columns=['ticker', 'quantity', 'price', 'side', 'date']
+        WatchlistItemMgr
+        .get_items(
+            filters=[
+                Watchlist.user_id == current_user.id,  # type: ignore
+                Watchlist.name == curr_watch_name,
+            ],
+            entities=[
+                WatchlistItem.ticker,
+                WatchlistItem.quantity,
+                WatchlistItem.price,
+                WatchlistItem.side,
+                WatchlistItem.trade_date.label("date")
+            ],
+            orderby=[WatchlistItem.ticker, WatchlistItem.trade_date]
         )
-        .astype({
-            'quantity': 'int64',
-            'price': 'float64',
-            'date': 'datetime64[ns]',
-        })
-        .sort_values(by=['ticker', 'date'])
+        .astype({'date': 'datetime64[ns]'})
+     )
+    tickers = df_trade_history['ticker'].unique()
+    min_date = df_trade_history['date'].dt.date.min()
+    max_date = df_trade_history['date'].dt.date.max()
+    df_prices = (
+        PriceMgr
+        .get_items(
+            filters=[
+                Security.ticker.in_(tickers),
+                Price.date.between(min_date, max_date)
+            ],
+            entities=[
+                Security.ticker, 
+                Price.date, 
+                Price.close_price.label('price'),
+            ],
+            orderby=[Security.ticker, Price.date]
+        )
+        .astype({'date': 'datetime64[ns]'})
     )
     df_portf_pos = calc_portf_positions(df_trade_history)
-    tickers = df_portf_pos['ticker'].unique()
-    min_date = df_portf_pos['date'].dt.date.min()
-    max_date = df_portf_pos['date'].dt.date.max()
-    prices = PriceMgr.get_items(
-        filters=[
-            Security.ticker.in_(tickers),
-            Price.date.between(min_date, max_date)
-        ],
-        entities=[Security.ticker, Price.date, Price.close_price],
-        orderby=[Security.ticker, Price.date]
-    )
-    df_prices = (
-        pd
-        .DataFrame(
-            data=prices,
-            columns=["ticker", "date", "price"]
-        )
-        .astype({
-            'date': 'datetime64[ns]',
-            'price': 'float64'
-        })
-    )
     df_portf_val = calc_portf_valuations(df_portf_pos, df_prices)
-    portf_flows = WatchlistItemMgr.get_grouped_items(
-        filters=[Watchlist.name == curr_watch_name]
+    df_portf_flows = (
+        WatchlistItemMgr
+        .get_grouped_items(filters=[
+            Watchlist.user_id == current_user.id,  # type: ignore
+            Watchlist.name == curr_watch_name
+        ])
+        .astype({'date': 'datetime64[ns]'})
     )
-    df_portf_flows = calc_portf_flows_adjusted(portf_flows)
-    df_portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows)
+    df_portf_flows_adj = calc_portf_flows_adjusted(df_portf_flows)
+    df_portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows_adj)
     df_portf_pos_summary = calc_last_portf_position(df_portf_pos)
     df_portf_val_summary = calc_last_portf_val(df_portf_val)
     return render_template(

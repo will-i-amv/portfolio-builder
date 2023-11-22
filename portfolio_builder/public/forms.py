@@ -172,32 +172,34 @@ class UpdateItemForm(ItemForm):
         input_ticker = self.ticker.data
         total_amount_sold = self.price.data * self.quantity.data
         if input_side == 'sell':
-            net_asset_values = [
-                item.flows
-                for item in WatchlistItemMgr.get_items(
-                    filters=[
-                        Watchlist.user_id == current_user.id,  # type: ignore
-                        Watchlist.name == self.watchlist.data,
-                        WatchlistItem.ticker == self.ticker.data,
-                    ],
-                    entities=[
-                        func.sum(
-                            WatchlistItem.quantity * WatchlistItem.price * case(
-                                (WatchlistItem.side == 'buy', 1),
-                                (WatchlistItem.side == 'sell', (-1)),
-                            )
+            df_asset_values = WatchlistItemMgr.get_items(
+                filters=[
+                    Watchlist.user_id == current_user.id,  # type: ignore
+                    Watchlist.name == self.watchlist.data,
+                    WatchlistItem.ticker == self.ticker.data,
+                ],
+                entities=[
+                    func.sum(
+                        WatchlistItem.quantity * WatchlistItem.price * case(
+                            (WatchlistItem.side == 'buy', 1),
+                            (WatchlistItem.side == 'sell', (-1)),
                         )
-                        .label('flows')
-                    ]
-                )
-            ]
-            net_asset_value = next(iter(net_asset_values), 0.0)
-            if total_amount_sold > net_asset_value:
+                    )
+                    .label('flows')
+                ]
+            )
+            if df_asset_values.empty:
                 raise ValidationError(
-                    f"You tried to sell USD {total_amount_sold} " +
-                    f"worth of '{input_ticker}', but you only have " +
-                    f"USD {net_asset_value} in total."
+                    f"You can't sell if your portfolio is empty."
                 )
+            else:
+                net_asset_value = df_asset_values.loc[:, 'flows'].get(0, 0.0)
+                if total_amount_sold > net_asset_value:
+                    raise ValidationError(
+                        f"You tried to sell USD {total_amount_sold} " +
+                        f"worth of '{input_ticker}', but you only have " +
+                        f"USD {net_asset_value} in total."
+                    )
 
     def validate_trade_date(self, trade_date: DateField) -> None:
         input_trade_date = trade_date.data
