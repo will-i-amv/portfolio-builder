@@ -12,7 +12,7 @@ from tiingo import TiingoClient
 from portfolio_builder import db, scheduler
 from portfolio_builder.public.models import (
     Price, Security, WatchlistItem,
-    SecurityMgr, WatchlistItemMgr
+    SecurityMgr, PriceMgr, WatchlistItemMgr
 )
 
 
@@ -192,15 +192,11 @@ def load_prices_all_tickers() -> None:
 
 def load_prices_ticker(ticker: str) -> None:
     with scheduler.app.app_context():  # type: ignore
-        first_price = (
-            db
-            .session
-            .query(Price)
-            .join(Security, onclause=(Price.ticker_id == Security.id))
-            .filter(Security.ticker == ticker)
-            .first()
+        price_obj = PriceMgr.get_first_item(
+            filters=[Security.ticker == ticker],
+            orderby = [Price.date.desc()]
         )
-        if not first_price:
+        if price_obj is None:
             end_date = dt.date.today() - dt.timedelta(days=1)
             start_date = end_date - dt.timedelta(days=100)
             load_prices([ticker], start_date, end_date)

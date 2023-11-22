@@ -132,6 +132,31 @@ class SecurityMgr:
 
 class PriceMgr:
     @classmethod
+    def _base_query(cls, filters: List[BinaryExpression]) -> Query[WatchlistItem]:
+        query = (
+            db
+            .session
+            .query(Price)
+            .join(Security, onclause=(Price.ticker_id == Security.id))
+            .filter(*filters)
+        )
+        return query
+
+    @classmethod
+    def get_first_item(
+        cls, 
+        filters: List[BinaryExpression],
+        orderby: Optional[List[Any]] = None,
+    ) -> Optional[WatchlistItem]:
+        item = (
+            cls
+            ._base_query(filters)
+            .order_by(*orderby)
+            .first()
+        )
+        return item
+
+    @classmethod
     def get_items(
         cls,
         filters: List[BinaryExpression],
@@ -143,11 +168,8 @@ class PriceMgr:
         if not orderby:
             orderby = [Price.date]
         prices = (
-            db
-            .session
-            .query(Price)
-            .join(Security, onclause=(Price.ticker_id == Security.id))
-            .filter(*filters)
+            cls
+            ._base_query(filters)
             .with_entities(*entities)
             .order_by(*orderby)
             .all()
