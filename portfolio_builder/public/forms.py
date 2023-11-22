@@ -170,6 +170,7 @@ class UpdateItemForm(ItemForm):
                 item.flows
                 for item in WatchlistItemMgr.get_items(
                     filters=[
+                        Watchlist.user_id==current_user.id, # type: ignore
                         Watchlist.name == self.watchlist.data,
                         WatchlistItem.ticker == self.ticker.data,
                     ],
@@ -197,6 +198,7 @@ class UpdateItemForm(ItemForm):
         input_ticker = self.ticker.data
         watch_item_obj = (
             WatchlistItemMgr.get_first_item(filters=[
+                Watchlist.user_id==current_user.id, # type: ignore
                 Watchlist.name == self.watchlist.data,
                 WatchlistItem.ticker == self.ticker.data,
                 WatchlistItem.is_last_trade == True,
