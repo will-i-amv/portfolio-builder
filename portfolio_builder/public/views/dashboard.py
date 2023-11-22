@@ -60,7 +60,7 @@ def calc_fifo(df: pd.DataFrame) -> pd.DataFrame:
     return df2
 
 
-def get_portf_positions(df: pd.DataFrame) -> pd.DataFrame:
+def calc_portf_positions(df: pd.DataFrame) -> pd.DataFrame:
     dfs_by_ticker = []
     for ticker in df['ticker'].unique():
         df_temp = calc_fifo(df[lambda x: x['ticker'] == ticker])
@@ -69,7 +69,7 @@ def get_portf_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df_positions
 
 
-def get_portf_valuations(
+def calc_portf_valuations(
     df_portf_pos: pd.DataFrame,
     df_prices: pd.DataFrame
 ) -> pd.DataFrame:
@@ -177,7 +177,7 @@ def calc_portf_hpr(
     return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_last_portf_val(
+def calc_last_portf_val(
     df_portf_val: pd.DataFrame,
     no_assets: int = 10
 ) -> List[tuple[Any, ...]]:
@@ -224,7 +224,7 @@ def get_last_portf_val(
         return list(df_final.itertuples(index=False))
 
 
-def get_last_portf_position(
+def calc_last_portf_position(
     df_portf_pos: pd.DataFrame,
     no_assets: int = 10
 ) -> List[tuple[Any, ...]]:
@@ -282,7 +282,7 @@ def index() -> str:
         })
         .sort_values(by=['ticker', 'date'])
     )
-    df_portf_pos = get_portf_positions(df_trade_history)
+    df_portf_pos = calc_portf_positions(df_trade_history)
     tickers = df_portf_pos['ticker'].unique()
     min_date = df_portf_pos['date'].dt.date.min()
     max_date = df_portf_pos['date'].dt.date.max()
@@ -305,14 +305,14 @@ def index() -> str:
             'price': 'float64'
         })
     )
-    df_portf_val = get_portf_valuations(df_portf_pos, df_prices)
+    df_portf_val = calc_portf_valuations(df_portf_pos, df_prices)
     portf_flows = WatchlistItemMgr.get_grouped_items(
         filters=[Watchlist.name == curr_watch_name]
     )
     df_portf_flows = calc_portf_flows_adjusted(portf_flows)
     df_portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows)
-    df_portf_pos_summary = get_last_portf_position(df_portf_pos)
-    df_portf_val_summary = get_last_portf_val(df_portf_val)
+    df_portf_pos_summary = calc_last_portf_position(df_portf_pos)
+    df_portf_val_summary = calc_last_portf_val(df_portf_val)
     return render_template(
         'public/dashboard.html',
         summary=df_portf_pos_summary,
