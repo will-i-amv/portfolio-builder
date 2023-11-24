@@ -1,23 +1,19 @@
 import datetime as dt
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
-from sqlalchemy.sql import expression, func, case
-from sqlalchemy.engine.row import Row
+import pandas as pd
 from sqlalchemy.orm import Query
+from sqlalchemy.sql import expression, func, case
 from sqlalchemy.sql.elements import BinaryExpression
 
 from portfolio_builder import db
 
 
-def get_default_date(date_: Optional[dt.date] = None) -> dt.date:
-    if date_ is None:
-        date_ = dt.date.today()
-    weekday = dt.date.isoweekday(date_)
-    if weekday == 6: # Saturday
-        date_ = date_ - dt.timedelta(days=1)
-    elif weekday == 7: # Sunday
-        date_ = date_ - dt.timedelta(days=2)
-    return date_
+def query_to_df(query: Query) -> pd.DataFrame:
+    try:
+        return pd.read_sql(sql=query.statement, con=db.engine)
+    except:
+        return pd.DataFrame()
 
 
 class Security(db.Model):
@@ -31,14 +27,14 @@ class Security(db.Model):
     isin = db.Column(db.String(20))
     prices = db.relationship(
         "Price",
-        backref="securities", 
+        backref="securities",
         passive_deletes=True
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Security Name: {self.name}, " + 
-            f"Ticker Name: {self.ticker}, " + 
+            f"<Security Name: {self.name}, " +
+            f"Ticker Name: {self.ticker}, " +
             f"Country: {self.country}>"
         )
 
@@ -54,14 +50,14 @@ class Price(db.Model):
     close_price = db.Column(db.Numeric(11, 6), nullable=False)
     ticker_id = db.Column(
         db.Integer,
-        db.ForeignKey("securities.id"), 
+        db.ForeignKey("securities.id"),
         nullable=False
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Date: {self.date}, " + 
-            f"Ticker ID: {self.ticker_id}, " + 
+            f"<Date: {self.date}, " +
+            f"Ticker ID: {self.ticker_id}, " +
             f"Close Price: {self.close_price}>"
         )
 
@@ -72,12 +68,12 @@ class Watchlist(db.Model):
     name = db.Column(db.String(25), nullable=False)
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey("users.id", ondelete="CASCADE"), 
+        db.ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
     items = db.relationship(
         "WatchlistItem",
-        backref="watchlists", 
+        backref="watchlists",
         passive_deletes=True
     )
 
@@ -93,7 +89,11 @@ class WatchlistItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     side = db.Column(db.String(5), nullable=False)
     trade_date = db.Column(db.Date, nullable=False)
-    is_last_trade = db.Column(db.Boolean, server_default=expression.true(), nullable=False)
+    is_last_trade = db.Column(
+        db.Boolean,
+        server_default=expression.true(),
+        nullable=False
+    )
     created_timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     comments = db.Column(db.String(140))
     watchlist_id = db.Column(
@@ -106,152 +106,200 @@ class WatchlistItem(db.Model):
         return (f"<Order ID: {self.id}, Ticker: {self.ticker}>")
 
 
-def get_securities(
-    filters: List[BinaryExpression],
-    entities: Optional[List[Any]] = None,
-    orderby: Optional[List[Any]] = None,
-) -> List[Row[Tuple[Any, Any]]]:
-    if not entities:
-        entities = [
-            Security.name,
-            Security.ticker,
-            Security.exchange,
-            Security.currency,
-            Security.country,
-            Security.isin,
-        ]
-    if not orderby:
-        orderby = [Security.ticker]
-    prices = (
-        db
-        .session
-        .query(Security)
-        .filter(*filters)
-        .with_entities(*entities)
-        .order_by(*orderby)
-        .all()
-    )
-    return prices
-
-
-def get_prices(
-    filters: List[BinaryExpression],
-    entities: Optional[List[Any]] = None,
-    orderby: Optional[List[Any]] = None,
-) -> List[Row[Tuple[Any, Any]]]:
-    if not entities:
-        entities = [Price.date, Price.close_price]
-    if not orderby:
-        orderby = [Price.date] 
-    prices = (
-        db
-        .session
-        .query(Price)
-        .join(Security, onclause=(Price.ticker_id==Security.id))
-        .filter(*filters)
-        .with_entities(*entities)
-        .order_by(*orderby)
-        .all()
-    )
-    return prices
-
-
-def query_watch_item(filters: List[BinaryExpression]) -> Query[WatchlistItem]:
-    query = (
-        db
-        .session
-        .query(WatchlistItem)
-        .join(Watchlist, onclause=(WatchlistItem.watchlist_id==Watchlist.id))
-        .filter(*filters)
-    )
-    return query
-
-
-def get_first_watch_item(
-    filters: List[BinaryExpression]
-) -> Optional[WatchlistItem]:
-    item = query_watch_item(filters).first()
-    return item
-
-
-def get_watch_items(
-    filters: List[BinaryExpression],
-    entities: Optional[List[Any]] = None,
-    orderby: Optional[List[Any]] = None,
-) -> List[Row[Tuple[Any, Any]]]:
-    if not entities: 
-        entities = [
-            WatchlistItem.id,
-            WatchlistItem.ticker,
-            WatchlistItem.quantity,
-            WatchlistItem.price,
-            WatchlistItem.side,
-            WatchlistItem.trade_date,
-            WatchlistItem.comments,
-        ]
-    if not orderby: 
-        orderby = [WatchlistItem.id]
-    query = query_watch_item(filters)
-    items = (
-        query
-        .with_entities(*entities)
-        .order_by(*orderby)
-        .all()
-    )
-    return items
-
-
-def get_grouped_watch_items(
-    filters: List[BinaryExpression]
-) -> List[Row[Tuple[Any, Any]]]:
-    query = query_watch_item(filters)
-    grouped_items = (
-        query
-        .group_by(func.date(WatchlistItem.trade_date))
-        .with_entities(
-            func.date(WatchlistItem.trade_date).label('date'),
-            func.sum(
-                WatchlistItem.quantity * WatchlistItem.price * case(
-                    (WatchlistItem.side == 'buy', 1),
-                    (WatchlistItem.side == 'sell', (-1)),
-                )
-            )
-            .label('flows')
+class SecurityMgr:
+    @classmethod
+    def get_items(
+        cls,
+        filters: List[BinaryExpression],
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> pd.DataFrame:
+        if not entities:
+            entities = [
+                Security.name,
+                Security.ticker,
+                Security.exchange,
+                Security.currency,
+                Security.country,
+                Security.isin,
+            ]
+        if not orderby:
+            orderby = [Security.ticker]
+        query = (
+            db
+            .session
+            .query(Security)
+            .filter(*filters)
+            .with_entities(*entities)
+            .order_by(*orderby)
         )
-        .order_by(func.date(WatchlistItem.trade_date))
-        .all()
-    )
-    return grouped_items
+        return query_to_df(query)
 
 
-def query_watchlist(filters: List[BinaryExpression]) -> Query[Watchlist]:
-    query = (
-        db
-        .session
-        .query(Watchlist)
-        .filter(*filters)
-    )
-    return query
+class PriceMgr:
+    @classmethod
+    def _base_query(cls, filters: List[BinaryExpression]) -> Query[WatchlistItem]:
+        query = (
+            db
+            .session
+            .query(Price)
+            .join(Security, onclause=(Price.ticker_id == Security.id))
+            .filter(*filters)
+        )
+        return query
 
-def get_first_watchlist(filters: List[BinaryExpression]) -> Optional[Watchlist]:
-    item = query_watchlist(filters).first()
-    return item
+    @classmethod
+    def get_first_item(
+        cls, 
+        filters: List[BinaryExpression],
+        orderby: Optional[List[Any]] = None,
+    ) -> Optional[WatchlistItem]:
+        item = (
+            cls
+            ._base_query(filters)
+            .order_by(*orderby)
+            .first()
+        )
+        return item
+
+    @classmethod
+    def get_items(
+        cls,
+        filters: List[BinaryExpression],
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> pd.DataFrame:
+        if not entities:
+            entities = [Price.date, Price.close_price]
+        if not orderby:
+            orderby = [Price.date]
+        query = (
+            cls
+            ._base_query(filters)
+            .with_entities(*entities)
+            .order_by(*orderby)
+        )
+        return query_to_df(query)
 
 
-def get_watchlists(
-    filters: List[BinaryExpression],
-    entities: Optional[List[Any]] = None,
-    orderby: Optional[List[Any]] = None,
-) -> List[Row[Tuple[Any, Any]]]:
-    if not entities: 
-        entities = [Watchlist.name]
-    if not orderby: 
-        orderby = [Watchlist.id]
-    query = query_watchlist(filters)
-    items = (
-        query
-        .with_entities(*entities)
-        .order_by(*orderby)
-        .all()
-    )
-    return items
+class WatchlistMgr:
+    @classmethod
+    def _base_query(cls, filters: List[BinaryExpression]) -> Query[Watchlist]:
+        query = (
+            db
+            .session
+            .query(Watchlist)
+            .filter(*filters)
+        )
+        return query
+
+    @classmethod
+    def get_first_item(cls, filters: List[BinaryExpression]) -> Optional[Watchlist]:
+        item = cls._base_query(filters).first()
+        return item
+
+    @classmethod
+    def get_items(
+        cls,
+        filters: List[BinaryExpression],
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> pd.DataFrame:
+        if not entities:
+            entities = [Watchlist.name]
+        if not orderby:
+            orderby = [Watchlist.id]
+        query = (
+            cls
+            ._base_query(filters)
+            .with_entities(*entities)
+            .order_by(*orderby)
+        )
+        return query_to_df(query)
+
+
+class WatchlistItemMgr:
+    @classmethod
+    def _base_query(cls, filters: List[BinaryExpression]) -> Query[WatchlistItem]:
+        query = (
+            db
+            .session
+            .query(WatchlistItem)
+            .join(Watchlist, onclause=(WatchlistItem.watchlist_id == Watchlist.id))
+            .filter(*filters)
+        )
+        return query
+
+    @classmethod
+    def get_first_item(
+        cls, filters: List[BinaryExpression]
+    ) -> Optional[WatchlistItem]:
+        item = cls._base_query(filters).first()
+        return item
+
+    @classmethod
+    def get_items(
+        cls,
+        filters: List[BinaryExpression],
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> pd.DataFrame:
+        if not entities:
+            entities = [
+                WatchlistItem.id,
+                WatchlistItem.ticker,
+                WatchlistItem.quantity,
+                WatchlistItem.price,
+                WatchlistItem.side,
+                WatchlistItem.trade_date,
+                WatchlistItem.comments,
+            ]
+        if not orderby:
+            orderby = [WatchlistItem.id]
+        query = (
+            cls
+            ._base_query(filters)
+            .with_entities(*entities)
+            .order_by(*orderby)
+        )
+        return query_to_df(query)
+
+    @classmethod
+    def get_distinct_items(
+        cls,
+        filters: List[BinaryExpression],
+        distinct_on: Optional[List[Any]] = None, 
+        entities: Optional[List[Any]] = None,
+        orderby: Optional[List[Any]] = None,
+    ) -> pd.DataFrame:
+        query = (
+            cls.
+            _base_query(filters)
+            .with_entities(*entities)
+            .distinct(*distinct_on)
+            .order_by(*orderby)
+        )
+        return query_to_df(query)
+
+    @classmethod
+    def get_grouped_items(
+        cls,
+        filters: List[BinaryExpression]
+    ) -> pd.DataFrame:
+        query = (
+            cls
+            ._base_query(filters)
+            .group_by(func.date(WatchlistItem.trade_date))
+            .with_entities(
+                func.date(WatchlistItem.trade_date).label('date'),
+                func.sum(
+                    WatchlistItem.quantity * WatchlistItem.price * case(
+                        (WatchlistItem.side == 'buy', 1),
+                        (WatchlistItem.side == 'sell', (-1)),
+                    )
+                )
+                .label('flows')
+            )
+            .order_by(func.date(WatchlistItem.trade_date))
+        )
+        return query_to_df(query)

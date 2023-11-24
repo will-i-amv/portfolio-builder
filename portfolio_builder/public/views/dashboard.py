@@ -1,25 +1,77 @@
-from typing import Any, Dict, List
+from collections import deque
+from typing import Any, List
 
 import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required, current_user
-from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
-    Watchlist, WatchlistItem, Security,
-    get_prices, get_watchlists, get_watch_items, get_grouped_watch_items
+    Watchlist, WatchlistItem, Security, Price,
+    PriceMgr, WatchlistMgr, WatchlistItemMgr
 )
-from portfolio_builder.public.portfolio import FifoAccounting
 
 
 bp = Blueprint('dashboard', __name__)
 
 
-def calc_portf_val_daily(
-    ticker: str, 
-    df_prices: pd.DataFrame, 
-    df_positions: pd.DataFrame
-) ->  pd.DataFrame:
+def calc_fifo(df: pd.DataFrame) -> pd.DataFrame:
+    df2 = (
+        df
+        .loc[:, ['ticker', 'date']]
+        .assign(net_quantity=0, realized_pnl=0.0)
+    )
+    net_quantity = 0
+    realized_pnl = 0
+    inventory = deque()  # Queue to track the inventory of stocks
+    for idx, row in df.iterrows():
+        if row['side'] == 'buy':
+            inventory.append({
+                'quantity': row['quantity'],
+                'price': row['price']
+            })
+            net_quantity += row['quantity']
+        else:
+            last_sold_qty = row['quantity']
+            last_sold_price = row['price']
+            remaining_qty = last_sold_qty
+            while remaining_qty > 0 and inventory:
+                first_item = next(iter(inventory))
+                first_purchase_qty = first_item['quantity']
+                first_purchase_price = first_item['price']
+                if first_purchase_qty >= remaining_qty:
+                    # The selling quantity is entirely covered by the earliest buying transaction
+                    realized_pnl += remaining_qty * (
+                        last_sold_price - first_purchase_price
+                    )
+                    first_item['quantity'] = first_purchase_qty - remaining_qty
+                    net_quantity -= remaining_qty
+                    remaining_qty = 0
+                else:
+                    # The selling quantity exceeds the earliest buying transaction
+                    realized_pnl += first_purchase_qty * (
+                        last_sold_price - first_purchase_price
+                    )
+                    remaining_qty -= first_purchase_qty
+                    net_quantity -= first_purchase_qty
+                    inventory.popleft()
+        df2.at[idx, 'net_quantity'] = net_quantity
+        df2.at[idx, 'realized_pnl'] = realized_pnl
+    return df2
+
+
+def calc_portf_positions(df: pd.DataFrame) -> pd.DataFrame:
+    dfs_by_ticker = []
+    for ticker in df['ticker'].unique():
+        df_temp = calc_fifo(df[lambda x: x['ticker'] == ticker])
+        dfs_by_ticker.append(df_temp)
+    df_positions = pd.concat(dfs_by_ticker)
+    return df_positions
+
+
+def calc_portf_valuations(
+    df_portf_pos: pd.DataFrame,
+    df_prices: pd.DataFrame
+) -> pd.DataFrame:
     """
     Combines the position breakdown with the daily prices to calculate
     daily market value. The Daily market value is the positions quantity
@@ -27,93 +79,26 @@ def calc_portf_val_daily(
     """
     df_portf_val = (
         pd
-        .merge(df_prices, df_positions, on=['date'], how='left')
+        .merge(df_portf_pos, df_prices, on=['ticker', 'date'], how='outer')
         .astype({
-            'quantity': 'float64', 
+            'net_quantity': 'float64',
             'price': 'float64',
         })
+        .sort_values(by=['ticker', 'date'])
         .fillna(method='ffill')
-        .assign(market_val=lambda x: x['quantity'] * x['price'])
+        .assign(market_val=lambda x: x['net_quantity'] * x['price'])
         .round({'market_val': 3})
-        .loc[:, ['date', 'market_val']]
-        .rename(columns={'market_val': f'market_val_{ticker}'})
-        .set_index('date')
-        .dropna()
+        .loc[:, ['date', 'ticker', 'market_val']]
+        .pivot_table(
+            index='date',
+            columns='ticker',
+            values='market_val',
+        )
     )
     return df_portf_val
 
 
-def get_portf_positions(watchlist_name: str) -> Dict[str, pd.DataFrame]:
-    tickers = set([
-        item.ticker 
-        for item in get_watch_items(
-            filters=[
-                Watchlist.user_id==1, # type: ignore
-                Watchlist.name == 'Technology'
-            ],
-            entities=[WatchlistItem.ticker],
-            orderby=[WatchlistItem.ticker]
-        )
-    ])
-    portf_pos = {}
-    for ticker in tickers:
-        trade_history = get_watch_items(
-            filters=[
-                Watchlist.user_id==current_user.id, # type: ignore
-                Watchlist.name == watchlist_name,
-                WatchlistItem.ticker == ticker,
-            ],
-            entities=[
-                WatchlistItem.ticker,
-                WatchlistItem.quantity,
-                WatchlistItem.price,
-                WatchlistItem.trade_date.label("date")
-            ],
-            orderby=[WatchlistItem.trade_date]
-        )
-        fifo_accounting = FifoAccounting(trade_history)
-        fifo_accounting.calc_fifo()
-        df_positions = (
-            pd
-            .DataFrame(
-                data=fifo_accounting.breakdown, 
-                columns=['date', 'quantity', 'average_cost']
-            )
-            .astype({
-                'date': 'datetime64[ns]', 
-                'quantity': 'float64', 
-                'average_cost': 'float64',
-            })
-        )
-        portf_pos[ticker] = df_positions
-    return portf_pos
-
-
-def get_portf_valuations(portf_pos: Dict[str, pd.DataFrame]) -> pd.DataFrame:
-    df_portf_val = pd.DataFrame()
-    for ticker, df_positions in portf_pos.items():
-        prices = get_prices(filters=[Security.ticker == ticker])
-        df_prices = (
-            pd
-            .DataFrame(
-                data=prices, 
-                columns=["date", "price"]
-            )
-            .astype({
-                'date': 'datetime64[ns]', 
-                'price': 'float64'
-            })
-        )
-        df = calc_portf_val_daily(ticker, df_prices, df_positions)
-        if df_portf_val.empty:
-            df_portf_val = df
-        else:
-            df_portf_val = df_portf_val.join(df)
-        df_portf_val = df_portf_val.fillna(method="ffill")
-    return df_portf_val
-
-
-def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
+def calc_portf_flows_adjusted(df_flows: pd.DataFrame) -> pd.DataFrame:
     """
     Using the Holding Period Return (HPR) methodology. Purchases of
     securities are accounted as fund inflows and the sale of securities are
@@ -123,10 +108,8 @@ def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
     accurate calculation of the HPR which can be distorted as purchases and
     sells are added to the trades.
     """
-    df_flows = (
-        pd
-        .DataFrame(flows, columns=["date", "flows"])
-        .astype({'date': 'datetime64[ns]'})
+    df_flows_adj = (
+        df_flows
         .assign(
             inflows=lambda x: x.loc[x['flows'] > 0, 'flows'].cumsum(),
             cash=lambda x: x.loc[x['flows'] <= 0, 'flows'].abs().cumsum(),
@@ -136,11 +119,11 @@ def calc_portf_flows_adjusted(flows: List[Row]) -> pd.DataFrame:
         .fillna(0)
         .drop(columns=['flows'])
     )
-    return df_flows
+    return df_flows_adj
 
 
 def calc_portf_hpr(
-    df_portf_val: pd.DataFrame, 
+    df_portf_val: pd.DataFrame,
     df_portf_flows: pd.DataFrame
 ) -> List[tuple[Any, ...]]:
     """
@@ -153,7 +136,7 @@ def calc_portf_hpr(
         caclulate the Percentage change before and after each cash flow.
     Returns a named tuple of daily HPR % changes.
     """
-    df_portf_val_filtered =( 
+    df_portf_val_filtered = (
         df_portf_val
         .assign(portf_val=lambda x: x.sum(axis=1))
         .loc[:, ['portf_val']]
@@ -161,10 +144,10 @@ def calc_portf_hpr(
     df_portf_hpr = (
         pd
         .merge(
-            df_portf_val_filtered, 
-            df_portf_flows, 
-            left_index=True, 
-            right_index=True, 
+            df_portf_val_filtered,
+            df_portf_flows,
+            left_index=True,
+            right_index=True,
             how='left'
         )
         .assign(cash=lambda x: x['cash'].ffill())
@@ -178,7 +161,7 @@ def calc_portf_hpr(
         .assign(
             pct_change=lambda x: (
                 (
-                    x["total_portf_val"] / 
+                    x["total_portf_val"] /
                     (x["total_portf_val_prev"] + x["inflows"])
                 ) - 1
             ) * 100
@@ -191,7 +174,10 @@ def calc_portf_hpr(
     return list(df_portf_hpr.itertuples(index=False))
 
 
-def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
+def calc_last_portf_val(
+    df_portf_val: pd.DataFrame,
+    no_assets: int = 10
+) -> List[tuple[Any, ...]]:
     """
     Returns a named tuple of the largest positions by absolute exposure
     in descending order. For the portfolios that contain more than 6
@@ -202,36 +188,30 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         return list(df_portf_val.itertuples(index=False))
     df_initial = (
         df_portf_val
+        .sort_index()
         .tail(1)
         .T
+        .set_axis(['market_val'], axis=1)
         .reset_index()
-    )
-    df_initial.columns = ['ticker', 'market_val']
-    df_temp = (
-        df_initial
-        .assign(market_val=lambda x: x["market_val"].abs())
-        .replace({'ticker': {'market_val_': ''}}, regex=True)
         .assign(
-            market_val_pct=lambda x: 
-                (x["market_val"]  / x["market_val"].sum()) * 100
+            market_val_pct=lambda x:
+                (x["market_val"] / x["market_val"].sum()) * 100
         )
         .round({'market_val_pct': 2})
-        .loc[lambda x: x["market_val"] != 0.0]
         .sort_values(by=['market_val_pct'], ascending=False)
     )
-    max_len = 6
-    df_len = df_temp.shape[0] 
-    if df_len < max_len:
-        return list(df_temp.itertuples(index=False))
+    max_no_assets = df_initial.shape[0]
+    if no_assets > max_no_assets:
+        return list(df_initial.itertuples(index=False))
     else:
-        df_top = df_temp.head(max_len)
+        df_top = df_initial.head(no_assets)
         df_bottom = (
-            df_temp
-            .tail(df_len - max_len)
+            df_initial
+            .tail(max_no_assets - no_assets)
             .pivot_table(
                 index='ticker',
                 margins=True,
-                margins_name='Other', # defaults to 'All'
+                margins_name='Other',  # defaults to 'All'
                 aggfunc='sum'
             )
             .reset_index()
@@ -241,70 +221,92 @@ def get_pie_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
         return list(df_final.itertuples(index=False))
 
 
-def get_bar_chart(df_portf_val: pd.DataFrame) -> List[tuple[Any, ...]]:
-    """
-    Returns a named tuple of the 5 largest positions by absolute exposure
-    in descending order
-    """
-    if df_portf_val.empty:
-        return list(df_portf_val.itertuples(index=False))
-    df_initial = (
-        df_portf_val
-        .tail(1)
-        .T
-        .reset_index()
+def calc_last_portf_position(
+    df_portf_pos: pd.DataFrame,
+    no_assets: int = 10
+) -> List[tuple[Any, ...]]:
+    if df_portf_pos.empty:
+        return list(df_portf_pos.itertuples(index=False))
+    last_portf_pos = list(
+        df_portf_pos
+        .loc[lambda x: x.groupby('ticker')['date'].idxmax()]
+        .drop(['date'], axis=1)
+        .itertuples(index=False)
     )
-    df_initial.columns = ['ticker', 'market_val']
-    df_final = (
-        df_initial
-        .replace({'ticker': {'market_val_': ''}}, regex=True)
-        .sort_values(by=['market_val'], ascending=False)
-        .loc[lambda x: x["market_val"] != 0.0]
-        .tail(5)
-    )
-    return list(df_final.itertuples(index=False))
-
-
-def get_last_portf_position(portf_pos: Dict[str, pd.DataFrame]) -> List[tuple[Any, ...]]:
-    last_portf_pos = []
-    for ticker, df_positions in portf_pos.items():
-        last_pos = list(
-            df_positions
-            .assign(ticker=ticker)
-            .sort_values(by=['date'])
-            .drop(['date'], axis=1)
-            .tail(1)
-            .itertuples(index=False)
-        )
-        last_portf_pos.append(*last_pos)
-    if len(last_portf_pos) > 7:
-        return last_portf_pos[0:7]
+    max_no_assets = len(last_portf_pos)
+    if max_no_assets > no_assets:
+        return last_portf_pos[:no_assets]
     return last_portf_pos
 
 
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index() -> str:
-    watch_names = [
-        item.name
-        for item in get_watchlists(
-            filters=[Watchlist.user_id==current_user.id], # type: ignore 
-        )
-    ]
+    df_watch_names = WatchlistMgr.get_items(filters=[
+        Watchlist.user_id == current_user.id  # type: ignore
+    ])
+    watch_names = df_watch_names.loc[:, 'name'].to_list()
     if request.method == 'POST':
         curr_watch_name = request.form.get('watchlist_group_selection', '')
     else:
         curr_watch_name = next(iter(watch_names), '')
-    portf_pos = get_portf_positions(curr_watch_name)
-    df_portf_val = get_portf_valuations(portf_pos)
-    portf_flows = get_grouped_watch_items(filters=[Watchlist.name == curr_watch_name])
-    df_portf_flows = calc_portf_flows_adjusted(portf_flows)
+    df_trade_history = (
+        WatchlistItemMgr
+        .get_items(
+            filters=[
+                Watchlist.user_id == current_user.id,  # type: ignore
+                Watchlist.name == curr_watch_name,
+            ],
+            entities=[
+                WatchlistItem.ticker,
+                WatchlistItem.quantity,
+                WatchlistItem.price,
+                WatchlistItem.side,
+                WatchlistItem.trade_date.label("date")
+            ],
+            orderby=[WatchlistItem.ticker, WatchlistItem.trade_date]
+        )
+        .astype({'date': 'datetime64[ns]'})
+     )
+    tickers = df_trade_history['ticker'].unique()
+    min_date = df_trade_history['date'].dt.date.min()
+    max_date = df_trade_history['date'].dt.date.max()
+    df_prices = (
+        PriceMgr
+        .get_items(
+            filters=[
+                Security.ticker.in_(tickers),
+                Price.date.between(min_date, max_date)
+            ],
+            entities=[
+                Security.ticker, 
+                Price.date, 
+                Price.close_price.label('price'),
+            ],
+            orderby=[Security.ticker, Price.date]
+        )
+        .astype({'date': 'datetime64[ns]'})
+    )
+    df_portf_pos = calc_portf_positions(df_trade_history)
+    df_portf_val = calc_portf_valuations(df_portf_pos, df_prices)
+    df_portf_flows = (
+        WatchlistItemMgr
+        .get_grouped_items(filters=[
+            Watchlist.user_id == current_user.id,  # type: ignore
+            Watchlist.name == curr_watch_name
+        ])
+        .astype({'date': 'datetime64[ns]'})
+    )
+    df_portf_flows_adj = calc_portf_flows_adjusted(df_portf_flows)
+    df_portf_hpr = calc_portf_hpr(df_portf_val, df_portf_flows_adj)
+    df_portf_pos_summary = calc_last_portf_position(df_portf_pos)
+    df_portf_val_summary = calc_last_portf_val(df_portf_val)
     return render_template(
         'public/dashboard.html',
-        summary=get_last_portf_position(portf_pos), 
-        line_chart=calc_portf_hpr(df_portf_val, df_portf_flows),
-        pie_chart=get_pie_chart(df_portf_val), 
-        bar_chart=get_bar_chart(df_portf_val),
-        watch_names=watch_names, 
+        summary=df_portf_pos_summary,
+        line_chart=df_portf_hpr,
+        pie_chart=df_portf_val_summary,
+        bar_chart=df_portf_val_summary,
+        watch_names=watch_names,
         curr_watch_name=curr_watch_name,
     )

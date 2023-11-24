@@ -1,15 +1,14 @@
 import datetime as dt
-from decimal import Decimal
-from queue import PriorityQueue
 import random
+from decimal import Decimal
 
+import pandas as pd
 import pytest
-from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import IntegrityError
 
 from portfolio_builder.public.models import (
-    Security, Price, Watchlist, WatchlistItem, get_securities, get_prices, 
-    get_first_watchlist, get_watchlists, get_first_watch_item, get_watch_items
+    Security, Price, Watchlist, WatchlistItem, 
+    SecurityMgr, PriceMgr, WatchlistMgr, WatchlistItemMgr
 )
 
 
@@ -270,14 +269,17 @@ class TestWatchlist:
         watchlists = [watchlist1, watchlist2]
         db.session.add_all(watchlists)
         db.session.commit()
-        stored_watchlists = get_watchlists(
+        result = WatchlistMgr.get_items(
             filters=[Watchlist.user_id == user_id],
             entities=[Watchlist.name, Watchlist.user_id]
         )
-        assert len(watchlists) == 2
-        for stored_watch, watch in zip(stored_watchlists, watchlists):
-            assert stored_watch.name == watch.name
-            assert stored_watch.user_id == watch.user_id
+        assert result.shape[0] == len(watchlists)
+        for (_, row), watch in zip(
+            result.iterrows(), 
+            watchlists
+        ):
+            assert row['name']== watch.name
+            assert row['user_id'] == watch.user_id
 
     def test_create_watchlist_with_null_name(self, db, db_rollback):
         with pytest.raises(IntegrityError):
@@ -390,76 +392,56 @@ class TestGetWatchlists:
 
     def test_matching_filter(self, watchlists):
         watchlist = random.choice(watchlists)
-        result = get_watchlists(filters=[Watchlist.name == watchlist.name])
-        assert isinstance(result, list)
-        assert len(result) > 0
+        result = WatchlistMgr.get_items(filters=[Watchlist.name == watchlist.name])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] > 0
     
     def test_not_matching_filters(self, db):
-        result = get_watchlists(filters=[Watchlist.name == 'Nonexistent Watchlist'])
-        assert isinstance(result, list)
-        assert len(result) == 0
+        result = WatchlistMgr.get_items(filters=[Watchlist.name == 'Nonexistent Watchlist'])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == 0
 
     # Returns an empty list when no watchlists exist in the database
     def test_empty_watchlists_table(self, db):
         db.session.query(Watchlist).delete()
         db.session.commit()
-        result = get_watchlists([])
-        assert isinstance(result, list)
-        assert len(result) == 0
+        result = WatchlistMgr.get_items([])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == 0
 
     def test_default_entities_param(self):
-        result = get_watchlists(filters=[])
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.name, str) for item in result)
+        result = WatchlistMgr.get_items(filters=[])
+        assert all(isinstance(item, str) for item in result.loc[:, 'name'])
 
     def test_valid_entities_param(self):
-        result = get_watchlists(filters=[], entities=[Watchlist.id, Watchlist.user_id])
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.id, int) for item in result)
-        assert all(isinstance(item.user_id, int) for item in result)
+        result = WatchlistMgr.get_items(filters=[], entities=[Watchlist.id, Watchlist.user_id])
+        assert all(isinstance(item, int) for item in result.loc[:, 'id'])
+        assert all(isinstance(item, int) for item in result.loc[:, 'user_id'])
 
     def test_default_orderby_param(self):
-        result = [
-            item.id
-            for item in get_watchlists(filters=[], entities=[Watchlist.id])
-        ]
-        assert all(
-            result[i] <= result[i+1] 
-            for i in range(len(result)-1)
-        )
+        result = WatchlistMgr.get_items(filters=[], entities=[Watchlist.id])
+        assert (result.loc[:, 'id'].diff().fillna(0.0) >= 0.0).all()
 
     def test_orderby_asc(self):
-        result = [
-            item.name
-            for item in get_watchlists(filters=[], orderby=[Watchlist.name])
-        ]
-        assert all(
-            result[i] <= result[i+1] 
-            for i in range(len(result)-1)
-        )
+        result = WatchlistMgr.get_items(filters=[], orderby=[Watchlist.name])
+        assert (result.loc[:, 'name'].diff().fillna(0.0) >= 0.0).all()
 
     def test_orderby_desc(self):
-        result = [
-            item.name
-            for item in get_watchlists(filters=[], orderby=[Watchlist.name.desc()])
-        ]
-        assert all(
-            result[i] >= result[i+1] 
-            for i in range(len(result)-1)
-        )
+        result = WatchlistMgr.get_items(filters=[], orderby=[Watchlist.name.desc()])
+        assert (result.loc[:, 'name'].diff().fillna(0.0) <= 0.0).all()
 
     def test_raises_error_invalid_filters_param(self):
         with pytest.raises(AttributeError):
-            get_watchlists(filters=[Watchlist.invalid_column == 0])
+            WatchlistMgr.get_items(filters=[Watchlist.invalid_column == 0])
 
     def test_raises_error_invalid_entities_param(self):
         with pytest.raises(AttributeError):
-            get_watchlists(filters=[], entities=[Watchlist.invalid_column])
+            WatchlistMgr.get_items(filters=[], entities=[Watchlist.invalid_column])
 
     # Raises an error when given an invalid orderby parameter
     def test_raises_error_invalid_orderby_param(self):
         with pytest.raises(Exception):
-            get_watchlists(filters=[], orderby=[Watchlist.invalid_column])
+            WatchlistMgr.get_items(filters=[], orderby=[Watchlist.invalid_column])
 
 
 class TestGetWatchItems:
@@ -468,69 +450,62 @@ class TestGetWatchItems:
         # Returns a list of rows containing the selected columns 
         # from WatchlistItem table, ordered by the given orderby parameter.
         watch_item = random.choice(watch_items)
-        result = get_watch_items(filters=[WatchlistItem.ticker == watch_item.ticker])
-        assert len(result) > 0
-        assert isinstance(result, list)
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.id, int) for item in result)
-        assert all(isinstance(item.ticker, str) for item in result)
-        assert all(isinstance(item.quantity, int) for item in result)
-        assert all(isinstance(item.price, float) for item in result)
-        assert all(isinstance(item.side, str) for item in result)
-        assert all(isinstance(item.trade_date, dt.date) for item in result)
-        assert all(item.ticker == watch_item.ticker for item in result)
+        result = WatchlistItemMgr.get_items(filters=[WatchlistItem.ticker == watch_item.ticker])
+        assert result.shape[0] > 0
+        assert isinstance(result, pd.DataFrame)
+        assert all(isinstance(item, int) for item in result.loc[:, 'id'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'ticker'])
+        assert all(isinstance(item, int) for item in result.loc[:, 'quantity'])
+        assert all(isinstance(item, float) for item in result.loc[:, 'price'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'side'])
+        assert all(isinstance(item, dt.date) for item in result.loc[:, 'trade_date'])
+        assert all(item == watch_item.ticker for item in result.loc[:, 'ticker'])
 
     def test_returns_match_all_filter(self, watch_items, db_teardown):
-        result = get_watch_items(filters=[])
-        assert len(result) == len(watch_items)
+        result = WatchlistItemMgr.get_items(filters=[])
+        assert result.shape[0] == len(watch_items)
     
     def test_returns_no_match_filter(self, db):
         # Returns an empty list if no rows match the given filter.
-        result = get_watch_items(filters=[
+        result = WatchlistItemMgr.get_items(filters=[
             WatchlistItem.ticker == 'Nonexistent Ticker'
         ])
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == 0
 
     def test_returns_selected_columns(self, watch_items):
         # Returns only the columns specified in the select parameter.
         watch_item = random.choice(watch_items)
         filters = [WatchlistItem.ticker == watch_item.ticker]
         select = [WatchlistItem.id, WatchlistItem.ticker]
-        result = get_watch_items(filters=filters, entities=select)
-        assert all((len(row) == len(select)) for row in result)
-        assert all(isinstance(row.id, int) for row in result)
-        assert all(isinstance(row.ticker, str) for row in result)
+        result = WatchlistItemMgr.get_items(filters=filters, entities=select)
+        assert result.shape[1] == len(select)
+        assert all(isinstance(item, int) for item in result.loc[:, 'id'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'ticker'])
 
     def test_returns_rows_ascending_order(self, db):
         # Returns rows in ascending order by default.
-        result = get_watch_items(filters=[WatchlistItem.ticker == 'AAPL'])
-        assert all(
-            result[i].id <= result[i+1].id 
-            for i in range(len(result)-1)
-        )
+        result = WatchlistItemMgr.get_items(filters=[WatchlistItem.ticker == 'AAPL'])
+        assert (result.loc[:, 'id'].diff().fillna(0.0) >= 0.0).all()
 
     def test_returns_rows_descending_order(self, db):
         # Returns rows in descending order if orderby parameter 
         # is given with a descending order.
         filter = [WatchlistItem.ticker == 'AAPL']
         orderby = [WatchlistItem.id.desc()]
-        result = get_watch_items(filters=filter, orderby=orderby)
-        assert all(
-            result[i].id >= result[i+1].id 
-            for i in range(len(result)-1)
-        )
+        result = WatchlistItemMgr.get_items(filters=filter, orderby=orderby)
+        assert (result.loc[:, 'id'].diff().fillna(0.0) <= 0.0).all()
 
     def test_returns_empty_list_invalid_filter(self, db, db_rollback):
         # Raises an error if the filter parameter is invalid.
         with pytest.raises(AttributeError):
-            get_watch_items(filters=[WatchlistItem.invalid_column == 0])
+            WatchlistItemMgr.get_items(filters=[WatchlistItem.invalid_column == 0])
 
     def test_returns_empty_list_invalid_select(self, watch_items, db_rollback):
         # Raises an error if the select parameter is invalid.
         watch_item = random.choice(watch_items)
         with pytest.raises(AttributeError):
-            get_watch_items(
+            WatchlistItemMgr.get_items(
                 filters=[WatchlistItem.ticker == watch_item.ticker], 
                 entities=[WatchlistItem.invalid_column]
             )
@@ -539,7 +514,7 @@ class TestGetWatchItems:
         # Raises an error if the orderby parameter is invalid.
         watch_item = random.choice(watch_items)
         with pytest.raises(AttributeError):
-            get_watch_items(
+            WatchlistItemMgr.get_items(
                 filters=[WatchlistItem.ticker == watch_item.ticker], 
                 orderby = [WatchlistItem.invalid_column],
             )
@@ -550,31 +525,31 @@ class TestGetFirstWatchlist:
     def test_returns_first_valid_filter(self, watchlists, db_teardown):
         # Returns first Watchlist object when a valid filter is provided
         watchlist = random.choice(watchlists)
-        result = get_first_watchlist(filters=[Watchlist.name == watchlist.name])
+        result = WatchlistMgr.get_first_item(filters=[Watchlist.name == watchlist.name])
         assert isinstance(result, Watchlist)
 
     def test_returns_none_no_match(self, db_teardown):
         # Returns None when no Watchlist matches the filter
-        result = get_first_watchlist(filters=[Watchlist.name == "Nonexistent Watchlist"])
+        result = WatchlistMgr.get_first_item(filters=[Watchlist.name == "Nonexistent Watchlist"])
         assert result is None
 
     def test_returns_first_multiple_match(self, watchlists):
         # Returns first Watchlist object that matches the filter 
         # that multiple Watchlists match.
         watchlist = random.choice(watchlists)
-        result = get_first_watchlist(filters=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
+        result = WatchlistMgr.get_first_item(filters=[Watchlist.name.like(f"{watchlist.name[:4]}%")])
         assert isinstance(result, Watchlist)
 
     def test_returns_first_all_filter(self, db_teardown):
         # Returns one Watchlist object when a 'match_all' filter is provided
-        result = get_first_watchlist(filters=[])
+        result = WatchlistMgr.get_first_item(filters=[])
         assert result is not None
         assert isinstance(result, Watchlist)
 
     def test_raise_error_invalid_filter(self, db_rollback):
         # Raises an error when an invalid filter is provided
         with pytest.raises(AttributeError):
-            get_first_watchlist(filters=[Watchlist.invalid_column == "Invalid"])
+            WatchlistMgr.get_first_item(filters=[Watchlist.invalid_column == "Invalid"])
 
 
 class TestGetFirstWatchItem:
@@ -583,7 +558,7 @@ class TestGetFirstWatchItem:
         # Returns the first WatchlistItem when given a valid list 
         # of ticker filters
         watch_item = random.choice(watch_items)
-        result = get_first_watch_item(filters=[
+        result = WatchlistItemMgr.get_first_item(filters=[
             WatchlistItem.ticker == watch_item.ticker
         ])
         assert isinstance(result, WatchlistItem)
@@ -594,7 +569,7 @@ class TestGetFirstWatchItem:
         # Returns the first WatchlistItem when given a valid list 
         # of trade_date filters
         watch_item = random.choice(watch_items)
-        result = get_first_watch_item(filters=[
+        result = WatchlistItemMgr.get_first_item(filters=[
             WatchlistItem.trade_date == watch_item.trade_date, 
         ])
         assert isinstance(result, WatchlistItem)
@@ -603,12 +578,12 @@ class TestGetFirstWatchItem:
 
     def test_returns_none_no_match(self, db_teardown):
         # Returns None when no WatchlistItem matches the given filters
-        result = get_first_watch_item(filters=[WatchlistItem.ticker == "Nonexistent Ticker"])
+        result = WatchlistItemMgr.get_first_item(filters=[WatchlistItem.ticker == "Nonexistent Ticker"])
         assert result is None
 
     # Returns None when given an empty list of filters
     def test_returns_none_empty_filters(self, db_teardown):
-        result = get_first_watch_item(filters=[])
+        result = WatchlistItemMgr.get_first_item(filters=[])
         assert result is None
 
     def test_returns_correct_item_multiple_matches(self, watch_items, db_teardown):
@@ -616,7 +591,7 @@ class TestGetFirstWatchItem:
         # are multiple matches for the given filters
         watch_item = random.choice(watch_items)
         pattern = watch_item.ticker[:1]
-        result = get_first_watch_item(filters=[WatchlistItem.ticker.like(f'{pattern}%')])
+        result = WatchlistItemMgr.get_first_item(filters=[WatchlistItem.ticker.like(f'{pattern}%')])
         assert isinstance(result, WatchlistItem)
         assert pattern in result.ticker
 
@@ -626,85 +601,79 @@ class TestGetPrices:
     def test_returns_list_of_prices_with_valid_filters(self, prices, db_teardown):
         # Returns a list of prices when given valid filters
         price = random.choice(prices)
-        result = get_prices(filters=[Price.ticker_id == price.ticker_id])
-        assert isinstance(result, list)
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.date, dt.date) for item in result)
-        assert all(isinstance(item.close_price, Decimal) for item in result)
+        result = PriceMgr.get_items(filters=[Price.ticker_id == price.ticker_id])
+        assert isinstance(result, pd.DataFrame)
+        assert all(isinstance(item, dt.date) for item in result.loc[:, 'date'])
+        assert all(isinstance(item, float) for item in result.loc[:, 'close_price'])
 
     def test_can_handle_filters_with_multiple_conditions(self, prices):
         # Can handle filters with multiple valid filters
         price = random.choice(prices)
-        result = get_prices(filters=[
+        result = PriceMgr.get_items(filters=[
             Price.date >= price.date,
             Price.close_price == price.close_price,
             Price.ticker_id == price.ticker_id,
         ])
-        assert isinstance(result, list)
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.date, dt.date) for item in result)
-        assert all(isinstance(item.close_price, Decimal) for item in result)
+        assert isinstance(result, pd.DataFrame)
+        assert all(isinstance(item, dt.date) for item in result.loc[:, 'date'])
+        assert all(isinstance(item, float) for item in result.loc[:, 'close_price'])
 
     def test_returns_prices_default_orderby(self, prices, db_teardown):
         # Returns prices sorted by date when orderby is not specified
         price = random.choice(prices)
-        result = get_prices(filters=[Price.ticker_id == price.ticker_id])
-        assert all(
-            result[i].date <= result[i+1].date 
-            for i in range(len(result)-1)
-        )
-
+        result = PriceMgr.get_items(filters=[Price.ticker_id == price.ticker_id])
+        assert (result.loc[:, 'date'].diff().dt.days.fillna(0.0) >= 0.0).all()
     def test_returns_prices_sorted_by_specified_orderby_field(self, prices):
         # Returns prices sorted by the specified orderby field
         price = random.choice(prices)
-        result = get_prices(
+        result = PriceMgr.get_items(
             filters=[Price.ticker_id == price.ticker_id],
             orderby = [Price.close_price.desc()]
         )
-        assert all(
-            result[i].close_price >= result[i+1].close_price 
-            for i in range(len(result)-1)
-        )
+        assert (result.loc[:, 'close_price'].diff().fillna(0.0) <= 0.0).all()
 
     def test_returns_only_specified_entities(self, prices):
         # Returns only the specified entities
         price = random.choice(prices)
         entities = [Price.date]
-        result = get_prices(
+        result = PriceMgr.get_items(
             filters=[Price.ticker_id == price.ticker_id],
             entities=entities
         )
-        assert all((len(row) == len(entities)) for row in result)
-        assert all(isinstance(row.date, dt.date) for row in result)
+        assert result.shape[1] == len(entities)
+        assert all(isinstance(item, dt.date) for item in result.loc[:, 'date'])
 
     def test_returns_prices_for_single_security_with_filter_for_single_security(self, securities):
         # Returns prices for a single security when given a filter for a single security
         security = random.choice(securities)
-        filters = [Security.id == security.id]
-        result = get_prices(filters=filters)
-        assert all(item.ticker_id == security.id for item in result)
+        # print(security.id)
+        result = PriceMgr.get_items(
+            filters=[Security.id == security.id],
+            entities = [Price.date, Price.close_price, Price.ticker_id]
+        )
+        assert all(item == security.id for item in result.loc[:, 'ticker_id'])
 
     def test_returns_empty_list_when_no_prices_match_filters(self, db_teardown):
         # Returns an empty list when no prices match the filters
-        result = get_prices(filters=[Price.date < dt.date(2020, 1, 1)])
-        assert isinstance(result, list)
-        assert len(result) == 0
+        result = PriceMgr.get_items(filters=[Price.date < dt.date(2020, 1, 1)])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == 0
 
     def test_raises_error_invalid_filter_param(self, db_rollback):
         # Raises an error when given an invalid filter
         with pytest.raises(AttributeError):
-            get_prices(filters=[Price.invalid_column == 0])
+            PriceMgr.get_items(filters=[Price.invalid_column == 0])
 
     # Returns an empty list when given an invalid orderby field
     def test_raises_error_invalid_orderby_param(self, db_rollback):
         # Raises an error when given an invalid entity
         with pytest.raises(AttributeError):
-            get_prices(filters=[], orderby=[Price.invalid_column])
+            PriceMgr.get_items(filters=[], orderby=[Price.invalid_column])
 
     def test_raises_error_invalid_entity_param(self, db_rollback):
         # Raises an error when given an invalid orderby
         with pytest.raises(AttributeError):
-            get_prices(filters=[], entities = [Price.invalid_column])
+            PriceMgr.get_items(filters=[], entities = [Price.invalid_column])
 
 
 
@@ -714,40 +683,38 @@ class TestGetSecurities:
         # Returns a list of securities with default entities and orderby parameters 
         # when no filters are provided
         security = random.choice(securities)
-        result = get_securities(filters=[Security.ticker == security.ticker])
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.name, str) for item in result)
-        assert all(isinstance(item.ticker, str) for item in result)
-        assert all(isinstance(item.exchange, str) for item in result)
+        result = SecurityMgr.get_items(filters=[Security.ticker == security.ticker])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] > 0
+        assert all(isinstance(item, str) for item in result.loc[:, 'name'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'ticker'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'exchange'])
 
-    # Returns a list of securities with specified entities and orderby parameters when no filters are provided
     def test_returns_default_filter_by_name(self, securities, db_teardown):
+        # Returns a list of securities with specified entities and orderby parameters 
         # when no filters are provided
         security = random.choice(securities)
-        result = get_securities(filters=[Security.name == security.name])
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(item, Row) for item in result)
-        assert all(isinstance(item.name, str) for item in result)
-        assert all(isinstance(item.ticker, str) for item in result)
-        assert all(isinstance(item.exchange, str) for item in result)
+        result = SecurityMgr.get_items(filters=[Security.name == security.name])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] > 0
+        assert all(isinstance(item, str) for item in result.loc[:, 'name'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'ticker'])
+        assert all(isinstance(item, str) for item in result.loc[:, 'exchange'])
 
     def test_returns_empty_list_no_match_filters(self, db_teardown):
         # Returns an empty list when no securities match the provided filters
-        result = get_securities(filters=[Security.country == 'Nonexistent Country'])
-        assert isinstance(result, list)
-        assert len(result) == 0
+        result = SecurityMgr.get_items(filters=[Security.country == 'Nonexistent Country'])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == 0
 
     def test_returns_list_filters_al(self, db, securities, db_teardown):
         # Returns a list of securities when there are no filters (all rows returned)
-        result = get_securities(filters=[db.literal(True)])
-        assert isinstance(result, list)
-        assert len(result) == len(securities)
+        result = SecurityMgr.get_items(filters=[db.literal(True)])
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[0] == len(securities)
 
     def test_raises_exception_invalid_filter(self, db_rollback):
         # Raises an exception when an invalid filter is provided
         with pytest.raises(AttributeError):
             filter = [Security.invalid_column == 'Invalid Value']
-            get_securities(filters=filter)
+            SecurityMgr.get_items(filters=filter)
