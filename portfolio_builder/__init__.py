@@ -1,6 +1,5 @@
 import datetime as dt
 import logging.config
-from typing import Dict, Any
 
 from flask import Flask
 from flask_apscheduler import APScheduler

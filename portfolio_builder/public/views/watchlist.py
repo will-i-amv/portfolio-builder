@@ -1,6 +1,6 @@
 import datetime as dt
 
-from flask import Blueprint, request, flash, redirect, render_template, url_for
+from flask import Blueprint, flash, redirect, render_template, url_for
 from werkzeug.wrappers.response import Response
 from flask_login import current_user, login_required
 from flask_wtf import FlaskForm

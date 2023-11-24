@@ -1,10 +1,9 @@
 from collections import deque
-from typing import Any, Dict, List
+from typing import Any, List
 
 import pandas as pd
 from flask import Blueprint, request, render_template
 from flask_login import login_required, current_user
-from sqlalchemy.engine.row import Row
 
 from portfolio_builder.public.models import (
     Watchlist, WatchlistItem, Security, Price,

@@ -1,8 +1,7 @@
 import datetime as dt
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 import pandas as pd
-from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Query
 from sqlalchemy.sql import expression, func, case
 from sqlalchemy.sql.elements import BinaryExpression
